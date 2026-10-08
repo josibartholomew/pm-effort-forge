@@ -1,0 +1,25 @@
+# clasp credentials (OAuth tokens — never commit)
+.clasprc.json
+**/.clasprc.json
+creds.json
+client_secret*.json
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Environment / secrets
+.env
+.env.*
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs / temp
+*.log
+tmp/

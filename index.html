@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PM Effort Prototype</title>
+<style>
+  body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 16px; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #999; padding: 3px 6px; text-align: left; }
+  input[type=number] { width: 80px; }
+  section { border: 1px solid #ccc; padding: 8px 12px; margin: 12px 0; }
+  #status { color: #555; }
+  .tasks { font-size: 0.85em; color: #555; }
+  textarea { width: 100%; }
+</style>
+</head>
+<body>
+<h1>PM Effort Calculator (prototype)</h1>
+<p id="status">Loading...</p>
+
+<section>
+  <h2>User: project</h2>
+  <p>
+    Project name <input id="projName" value="Test project"><br>
+    Annual budget ($) <input id="projBudget" type="number" value="250000"><br>
+    Subawards <input id="projSubawards" type="number" value="1">
+  </p>
+  <div id="userActivities"></div>
+  <p><button onclick="selectAll(true)">Select all</button> <button onclick="selectAll(false)">Select none</button></p>
+</section>
+
+<section>
+  <h2>Results</h2>
+  <div id="results"></div>
+  <p><button onclick="saveProject()">Save project</button></p>
+  <div id="savedProjects"></div>
+</section>
+
+<section>
+  <h2>Admin: activities</h2>
+  <div id="adminActivities"></div>
+  <p><button onclick="addActivity()">Add activity</button></p>
+  <h2>Admin: settings</h2>
+  <div id="adminSettings"></div>
+  <p>
+    <button onclick="saveAdmin()">Save admin changes</button>
+    <button onclick="resetDefaults()">Reset to defaults</button>
+  </p>
+  <p id="jsonTools">
+    <button onclick="exportConfig()">Export config (JSON)</button>
+    Import config: <input type="file" accept=".json" onchange="importConfig(this)">
+  </p>
+</section>
+
+<script>
+// ---------- Defaults ----------
+const DEFAULT_CONFIG = {
+  settings: {
+    pmWeeksPerYear: 52,        // weekly activities x this
+    studentWeeksPerYear: 48,   // student hrs/wk = total hours / this
+    fullTimeHours: 2080,       // FTE % = total hours / this
+    subawardRate: 0.05,        // multiplier added per subaward
+    budgetRatePer100k: 0.03,   // multiplier added per $100k of budget
+    multiplierCap: 2,          // multiplier never exceeds this
+    budgetThresholds: '100000 500000 1000000 1500000', // budget risk = number of thresholds exceeded
+    subawardScoreCap: 3,       // subaward risk = min(subawards, this)
+    moderateAt: 3,             // total risk >= this is Moderate
+    highAt: 5                  // total risk >= this is High
+  },
+  activities: [
+    { id: 'monitoring', name: 'Monitoring Project Activities & Workflow', hours: 2.5, unit: 'week', timesPerYear: '',
+      tasks: 'Update/maintain project work plan and timeline; maintain reporting & deliverables log; send check-in emails, follow up with team members; review meeting notes; update/organize files',
+      description: 'They will monitor project workflows, maintain work plans and deliverable tracking, follow up on assigned tasks, and ensure project activities remain on schedule.' },
+    { id: 'meeting_coord', name: 'Meeting Coordination & Facilitation', hours: 2.5, unit: 'week', timesPerYear: '',
+      tasks: 'Schedule meetings; prepare agendas, gather updates; facilitate meetings',
+      description: 'They will coordinate and facilitate project meetings by scheduling sessions, preparing agendas, gathering updates, and tracking action items.' },
+    { id: 'communication', name: 'Communication & Stakeholder Engagement', hours: 2, unit: 'week', timesPerYear: '',
+      tasks: 'Draft/distribute meeting minutes; routine PI/team communication; updates to external partners; prepare brief summaries/status updates',
+      description: 'They will support internal and external communication by distributing meeting documentation, providing routine project updates, and coordinating communication with project stakeholders.' },
+    { id: 'budget_monitoring', name: 'Budget Monitoring', hours: 5.5, unit: 'month', timesPerYear: '',
+      tasks: 'Track expenditures and reconcile with budget; coordinate with SPARC/sponsor on budget issues; support purchases/hiring/document routing; maintain internal budget tracker',
+      description: 'They will support financial oversight by tracking expenditures, coordinating with SPARC and the sponsor on budget-related matters, and supporting purchasing and hiring processes.' },
+    { id: 'reporting', name: 'Reporting & Compliance Tracking', hours: 20, unit: 'year', timesPerYear: '',
+      tasks: 'Collect data for sponsor reports; draft report sections and compile contributions; ensure deliverables submitted on time',
+      description: 'They will coordinate sponsor reporting and compliance activities by collecting required data, compiling contributions, and ensuring timely submission of required reports and deliverables.' },
+    { id: 'doc_management', name: 'Documentation & Knowledge Management', hours: 1, unit: 'week', timesPerYear: '',
+      tasks: 'Maintain shared drive/repository; version control for documents/templates',
+      description: 'They will maintain organized project documentation by managing shared repositories and ensuring appropriate version control of project materials.' },
+    { id: 'risk_mgmt', name: 'Risk Management & Issue Resolution', hours: 2.5, unit: 'month', timesPerYear: '',
+      tasks: 'Maintain/update risk log; identify risks during weekly reviews; coordinate issue resolution with PI/team',
+      description: 'They will support proactive risk management by identifying potential issues, maintaining a risk log, and coordinating resolution efforts with the project team.' },
+    { id: 'subaward_coord', name: 'Partner/Subaward Coordination', hours: 3, unit: 'month', timesPerYear: '',
+      tasks: 'Communicate with subaward leads; request/track subaward progress; review subrecipient reports',
+      description: 'Due to the complex nature of managing subawards, they will coordinate communication, track progress, and support reporting requirements for partner and subrecipient activities.' },
+    { id: 'launch', name: 'Project Launch', hours: 8, unit: 'year', timesPerYear: '',
+      tasks: 'Set up folders, trackers, communication channels; prepare/facilitate kickoff meeting; coordinate with SPARC Post Award & PI for setup',
+      description: 'They will support project startup by establishing tracking tools and communication channels and coordinating kickoff activities with SPARC Post Award and the project team.' },
+    { id: 'closeout', name: 'Project Closeout', hours: 6, unit: 'year', timesPerYear: '',
+      tasks: 'Archive project documents; track and submit final deliverables; final meeting and summary memo',
+      description: 'They will support project closeout by ensuring final deliverables are submitted, project records are archived, and closeout documentation is completed.' },
+    { id: 'evaluation', name: 'Evaluation & Continuous Improvement', hours: 2.5, unit: 'month', timesPerYear: '',
+      tasks: 'Collect/analyze feedback; support external evaluator requests; review/refine workflows',
+      description: 'They will support evaluation and continuous improvement by coordinating feedback collection, supporting external evaluation activities, and refining project workflows as needed.' }
+  ]
+};
+
+// ---------- Calculation (no page or storage code) ----------
+function annualHours(a, s) {
+  const h = Number(a.hours) || 0;
+  if (a.unit === 'week') return h * s.pmWeeksPerYear;
+  if (a.unit === 'month') return h * 12;
+  if (a.unit === 'each') return h * (Number(a.timesPerYear) || 0);
+  return h; // year
+}
+
+function calculate(config, project) {
+  const s = config.settings;
+  const chosen = config.activities.filter(a => project.selected.includes(a.id));
+  const baseHours = chosen.reduce((sum, a) => sum + annualHours(a, s), 0);
+  const budget = Number(project.budget) || 0;
+  const subawards = Number(project.subawards) || 0;
+
+  const multiplier = Math.min(s.multiplierCap,
+    1 + subawards * s.subawardRate + (budget / 100000) * s.budgetRatePer100k);
+  const totalHours = baseHours * multiplier;
+
+  const thresholds = String(s.budgetThresholds).split(/[\s,;]+/).filter(Boolean).map(Number);
+  const budgetRisk = thresholds.filter(t => budget > t).length;
+  const subawardRisk = Math.min(subawards, s.subawardScoreCap);
+  const riskScore = budgetRisk + subawardRisk;
+  const riskMax = thresholds.length + s.subawardScoreCap;
+  const riskLevel = riskScore >= s.highAt ? 'High' : riskScore >= s.moderateAt ? 'Moderate' : 'Low';
+
+  return {
+    baseHours, multiplier, totalHours,
+    ftePercent: totalHours / s.fullTimeHours * 100,
+    studentHoursPerWeek: totalHours / s.studentWeeksPerYear,
+    budgetRisk, subawardRisk, riskScore, riskMax, riskLevel
+  };
+}
+
+// ---------- Storage: Apps Script (Sheet) or browser (localStorage) ----------
+const IS_GAS = typeof google !== 'undefined' && google.script && google.script.run;
+const CONFIG_KEY = 'pmEffort.config';
+const PROJECTS_KEY = 'pmEffort.projects';
+
+function gasCall(fn, ...args) {
+  return new Promise((resolve, reject) =>
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args));
+}
+function lsGet(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
+}
+function lsSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { alert('Could not save in this browser: ' + e); }
+}
+
+const store = IS_GAS ? {
+  loadConfig: () => gasCall('getConfig'),
+  saveConfig: c => gasCall('saveConfig', c),
+  saveProject: p => gasCall('saveProject', p),
+  listProjects: async () => null // saved projects live in the Projects tab
+} : {
+  loadConfig: async () => lsGet(CONFIG_KEY),
+  saveConfig: async c => lsSet(CONFIG_KEY, c),
+  saveProject: async p => lsSet(PROJECTS_KEY, (lsGet(PROJECTS_KEY) || []).concat([p])),
+  listProjects: async () => lsGet(PROJECTS_KEY) || []
+};
+
+// ---------- App ----------
+let config = null;
+let selected = [];
+
+function copy(x) { return JSON.parse(JSON.stringify(x)); }
+function esc(x) {
+  return String(x ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+function setStatus(msg) { document.getElementById('status').textContent = msg; }
+
+// Settings may come back from the Sheet as text; make everything but the thresholds a number.
+function normalize(c) {
+  for (const k of Object.keys(DEFAULT_CONFIG.settings)) {
+    const v = c.settings[k] ?? DEFAULT_CONFIG.settings[k];
+    c.settings[k] = k === 'budgetThresholds' ? String(v) : Number(v);
+  }
+  return c;
+}
+
+async function init() {
+  try {
+    let c = await store.loadConfig();
+    if (!c || !c.activities || !c.activities.length) {
+      c = copy(DEFAULT_CONFIG);
+      await store.saveConfig(c);
+    }
+    config = normalize(c);
+    selected = config.activities.map(a => a.id);
+    if (IS_GAS) document.getElementById('jsonTools').style.display = 'none';
+    setStatus(IS_GAS ? 'Storage: Google Sheet' : 'Storage: this browser (localStorage)');
+    renderAll();
+    renderSaved();
+  } catch (e) {
+    setStatus('Error loading: ' + e);
+  }
+}
+
+function currentProject() {
+  return {
+    name: document.getElementById('projName').value,
+    budget: Number(document.getElementById('projBudget').value) || 0,
+    subawards: Number(document.getElementById('projSubawards').value) || 0,
+    selected: selected.slice()
+  };
+}
+
+function renderAll() { renderUser(); renderAdmin(); renderResults(); }
+
+function renderUser() {
+  const s = config.settings;
+  document.getElementById('userActivities').innerHTML =
+    '<table><tr><th></th><th>Activity</th><th>Expected</th><th>Hours/yr</th></tr>' +
+    config.activities.map((a, i) => `<tr>
+      <td><input type="checkbox" ${selected.includes(a.id) ? 'checked' : ''} onchange="toggle(${i}, this.checked)"></td>
+      <td>${esc(a.name)}${a.tasks ? `<div class="tasks">${esc(a.tasks)}</div>` : ''}</td>
+      <td>${esc(a.hours)} hrs/${a.unit === 'each' ? 'each x ' + esc(a.timesPerYear) + '/yr' : esc(a.unit)}</td>
+      <td>${annualHours(a, s).toFixed(1)}</td>
+    </tr>`).join('') + '</table>';
+}
+
+function renderResults() {
+  const r = calculate(config, currentProject());
+  document.getElementById('results').innerHTML = `<table>
+    <tr><td>Base hours/yr</td><td>${r.baseHours.toFixed(1)}</td></tr>
+    <tr><td>Complexity multiplier</td><td>${r.multiplier.toFixed(2)}x</td></tr>
+    <tr><td><b>Total annualized hours</b></td><td><b>${r.totalHours.toFixed(1)}</b></td></tr>
+    <tr><td><b>FTE % (${config.settings.fullTimeHours} hrs/yr)</b></td><td><b>${r.ftePercent.toFixed(1)}%</b></td></tr>
+    <tr><td><b>Hours/wk (student, ${config.settings.studentWeeksPerYear} wks)</b></td><td><b>${r.studentHoursPerWeek.toFixed(1)}</b></td></tr>
+    <tr><td><b>Risk score</b></td><td><b>${r.riskScore} / ${r.riskMax} (${r.riskLevel})</b>
+      &mdash; budget ${r.budgetRisk}, subawards ${r.subawardRisk}</td></tr>
+  </table>`;
+}
+
+function renderAdmin() {
+  document.getElementById('adminActivities').innerHTML =
+    '<table><tr><th>Activity</th><th>Hours</th><th>Per</th><th>Times/yr (if "each")</th><th></th></tr>' +
+    config.activities.map((a, i) => `<tr>
+      <td><input value="${esc(a.name)}" onchange="editActivity(${i}, 'name', this.value)" size="40">
+        <textarea rows="2" placeholder="Tasks" onchange="editActivity(${i}, 'tasks', this.value)">${esc(a.tasks)}</textarea>
+        <textarea rows="2" placeholder="Description" onchange="editActivity(${i}, 'description', this.value)">${esc(a.description)}</textarea></td>
+      <td><input type="number" step="0.5" value="${esc(a.hours)}" onchange="editActivity(${i}, 'hours', Number(this.value))"></td>
+      <td><select onchange="editActivity(${i}, 'unit', this.value)">
+        ${['week', 'month', 'year', 'each'].map(u => `<option ${a.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
+      </select></td>
+      <td><input type="number" value="${esc(a.timesPerYear)}" onchange="editActivity(${i}, 'timesPerYear', this.value)"></td>
+      <td><button onclick="removeActivity(${i})">Delete</button></td>
+    </tr>`).join('') + '</table>';
+
+  document.getElementById('adminSettings').innerHTML =
+    '<table>' + Object.keys(config.settings).map(k => `<tr>
+      <td>${k}</td>
+      <td><input value="${esc(config.settings[k])}" onchange="editSetting('${k}', this.value)"></td>
+    </tr>`).join('') + '</table>';
+}
+
+async function renderSaved() {
+  const list = await store.listProjects();
+  const el = document.getElementById('savedProjects');
+  if (list === null) { el.innerHTML = '<p>Saved projects go to the <b>Projects</b> tab of the Sheet.</p>'; return; }
+  el.innerHTML = list.length ? '<p>Saved in this browser:</p><ul>' + list.map(p =>
+    `<li>${esc(p.savedAt)} &mdash; ${esc(p.name)}: ${p.results.totalHours.toFixed(1)} hrs, ${p.results.ftePercent.toFixed(1)}% FTE, risk ${p.results.riskLevel}</li>`
+  ).join('') + '</ul>' : '';
+}
+
+// ---------- Actions ----------
+function toggle(i, on) {
+  const id = config.activities[i].id;
+  selected = on ? selected.concat([id]) : selected.filter(x => x !== id);
+  renderResults();
+}
+function selectAll(on) {
+  selected = on ? config.activities.map(a => a.id) : [];
+  renderUser(); renderResults();
+}
+function editActivity(i, field, value) {
+  config.activities[i][field] = value;
+  renderUser(); renderResults();
+}
+function addActivity() {
+  const id = 'a' + Date.now();
+  config.activities.push({ id, name: 'New activity', hours: 1, unit: 'week', timesPerYear: '', tasks: '', description: '' });
+  selected.push(id);
+  renderAll();
+}
+function removeActivity(i) {
+  const id = config.activities[i].id;
+  config.activities.splice(i, 1);
+  selected = selected.filter(x => x !== id);
+  renderAll();
+}
+function editSetting(k, value) {
+  config.settings[k] = k === 'budgetThresholds' ? value : Number(value);
+  renderAll();
+}
+
+async function saveAdmin() {
+  setStatus('Saving admin changes...');
+  try { await store.saveConfig(config); setStatus('Admin changes saved.'); }
+  catch (e) { setStatus('Error saving: ' + e); }
+}
+async function resetDefaults() {
+  if (!confirm('Replace all activities and settings with the defaults?')) return;
+  config = normalize(copy(DEFAULT_CONFIG));
+  selected = config.activities.map(a => a.id);
+  renderAll();
+  await saveAdmin();
+}
+async function saveProject() {
+  const p = currentProject();
+  const results = calculate(config, p);
+  const names = config.activities.filter(a => p.selected.includes(a.id)).map(a => a.name);
+  setStatus('Saving project...');
+  try {
+    await store.saveProject({ ...p, selectedNames: names, results, savedAt: new Date().toLocaleString() });
+    setStatus('Project saved.');
+    renderSaved();
+  } catch (e) { setStatus('Error saving project: ' + e); }
+}
+
+function exportConfig() {
+  const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pm-effort-config.json';
+  a.click();
+}
+function importConfig(input) {
+  const file = input.files[0];
+  if (!file) return;
+  file.text().then(async text => {
+    try {
+      const c = JSON.parse(text);
+      if (!Array.isArray(c.activities) || !c.settings) throw new Error('missing activities or settings');
+      config = normalize(c);
+      selected = config.activities.map(a => a.id);
+      renderAll();
+      await saveAdmin();
+    } catch (e) { alert('Could not import: ' + e.message); }
+    input.value = '';
+  });
+}
+
+['projName', 'projBudget', 'projSubawards'].forEach(id =>
+  document.getElementById(id).addEventListener('input', renderResults));
+init();
+</script>
+</body>
+</html>

@@ -1,10 +1,11 @@
 // PM Effort Calculator prototype: serves index.html and stores data in the Sheet.
 // Tabs: Activities (catalog), Settings (key/value), Projects (one row per saved project).
 // The defaults live in index.html; it seeds these tabs on first run.
+// This is Jane's comment hello!
 
-const ACTIVITY_HEADERS = ['id', 'name', 'hours', 'unit', 'timesPerYear', 'tasks', 'description'];
+const ACTIVITY_HEADERS = ['id', 'name', 'hours', 'unit', 'timesPerYear'];
 const PROJECT_HEADERS = ['Saved', 'Project', 'Budget', 'Subawards', 'Activities',
-  'Base hrs/yr', 'Multiplier', 'Total hrs/yr', 'FTE %', 'Student hrs/wk', 'Risk score', 'Risk level'];
+  'Base hrs/yr', 'Multiplier', 'Total hrs/yr', 'FTE %', 'Student hrs/wk'];
 
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('PM Effort')
@@ -44,9 +45,7 @@ function getConfig() {
       name: String(r[1]),
       hours: Number(r[2]) || 0,
       unit: String(r[3] || 'year').toLowerCase(),
-      timesPerYear: r[4],
-      tasks: String(r[5] ?? ''),
-      description: String(r[6] ?? '')
+      timesPerYear: r[4]
     }));
 
   const settings = {};
@@ -69,7 +68,6 @@ function saveConfig(config) {
   const setSheet = ss.getSheetByName('Settings') || ss.insertSheet('Settings');
   setSheet.clearContents();
   const setRows = [['key', 'value']].concat(Object.keys(config.settings).map(k => [k, String(config.settings[k])]));
-  // Plain text so "100000 500000 ..." isn't reinterpreted by Sheets.
   setSheet.getRange(1, 2, setRows.length, 1).setNumberFormat('@');
   setSheet.getRange(1, 1, setRows.length, 2).setValues(setRows);
   setSheet.setFrozenRows(1);
@@ -85,7 +83,6 @@ function saveProject(p) {
   }
   const r = p.results;
   sheet.appendRow([new Date(), p.name, p.budget, p.subawards, p.selectedNames.join(', '),
-    r.baseHours, r.multiplier, r.totalHours, r.ftePercent / 100, r.studentHoursPerWeek,
-    r.riskScore + ' / ' + r.riskMax, r.riskLevel]);
+    r.baseHours, r.multiplier, r.totalHours, r.ftePercent / 100, r.studentHoursPerWeek]);
   sheet.getRange(sheet.getLastRow(), 9).setNumberFormat('0.0%');
 }

@@ -11,8 +11,6 @@
   input[type=number] { width: 80px; }
   section { border: 1px solid #ccc; padding: 8px 12px; margin: 12px 0; }
   #status { color: #555; }
-  .tasks { font-size: 0.85em; color: #555; }
-  textarea { width: 100%; }
 </style>
 </head>
 <body>
@@ -62,46 +60,21 @@ const DEFAULT_CONFIG = {
     fullTimeHours: 2080,       // FTE % = total hours / this
     subawardRate: 0.05,        // multiplier added per subaward
     budgetRatePer100k: 0.03,   // multiplier added per $100k of budget
-    multiplierCap: 2,          // multiplier never exceeds this
-    budgetThresholds: '100000 500000 1000000 1500000', // budget risk = number of thresholds exceeded
-    subawardScoreCap: 3,       // subaward risk = min(subawards, this)
-    moderateAt: 3,             // total risk >= this is Moderate
-    highAt: 5                  // total risk >= this is High
+    multiplierCap: 2           // multiplier never exceeds this
   },
   activities: [
-    { id: 'monitoring', name: 'Monitoring Project Activities & Workflow', hours: 2.5, unit: 'week', timesPerYear: '',
-      tasks: 'Update/maintain project work plan and timeline; maintain reporting & deliverables log; send check-in emails, follow up with team members; review meeting notes; update/organize files',
-      description: 'They will monitor project workflows, maintain work plans and deliverable tracking, follow up on assigned tasks, and ensure project activities remain on schedule.' },
-    { id: 'meeting_coord', name: 'Meeting Coordination & Facilitation', hours: 2.5, unit: 'week', timesPerYear: '',
-      tasks: 'Schedule meetings; prepare agendas, gather updates; facilitate meetings',
-      description: 'They will coordinate and facilitate project meetings by scheduling sessions, preparing agendas, gathering updates, and tracking action items.' },
-    { id: 'communication', name: 'Communication & Stakeholder Engagement', hours: 2, unit: 'week', timesPerYear: '',
-      tasks: 'Draft/distribute meeting minutes; routine PI/team communication; updates to external partners; prepare brief summaries/status updates',
-      description: 'They will support internal and external communication by distributing meeting documentation, providing routine project updates, and coordinating communication with project stakeholders.' },
-    { id: 'budget_monitoring', name: 'Budget Monitoring', hours: 5.5, unit: 'month', timesPerYear: '',
-      tasks: 'Track expenditures and reconcile with budget; coordinate with SPARC/sponsor on budget issues; support purchases/hiring/document routing; maintain internal budget tracker',
-      description: 'They will support financial oversight by tracking expenditures, coordinating with SPARC and the sponsor on budget-related matters, and supporting purchasing and hiring processes.' },
-    { id: 'reporting', name: 'Reporting & Compliance Tracking', hours: 20, unit: 'year', timesPerYear: '',
-      tasks: 'Collect data for sponsor reports; draft report sections and compile contributions; ensure deliverables submitted on time',
-      description: 'They will coordinate sponsor reporting and compliance activities by collecting required data, compiling contributions, and ensuring timely submission of required reports and deliverables.' },
-    { id: 'doc_management', name: 'Documentation & Knowledge Management', hours: 1, unit: 'week', timesPerYear: '',
-      tasks: 'Maintain shared drive/repository; version control for documents/templates',
-      description: 'They will maintain organized project documentation by managing shared repositories and ensuring appropriate version control of project materials.' },
-    { id: 'risk_mgmt', name: 'Risk Management & Issue Resolution', hours: 2.5, unit: 'month', timesPerYear: '',
-      tasks: 'Maintain/update risk log; identify risks during weekly reviews; coordinate issue resolution with PI/team',
-      description: 'They will support proactive risk management by identifying potential issues, maintaining a risk log, and coordinating resolution efforts with the project team.' },
-    { id: 'subaward_coord', name: 'Partner/Subaward Coordination', hours: 3, unit: 'month', timesPerYear: '',
-      tasks: 'Communicate with subaward leads; request/track subaward progress; review subrecipient reports',
-      description: 'Due to the complex nature of managing subawards, they will coordinate communication, track progress, and support reporting requirements for partner and subrecipient activities.' },
-    { id: 'launch', name: 'Project Launch', hours: 8, unit: 'year', timesPerYear: '',
-      tasks: 'Set up folders, trackers, communication channels; prepare/facilitate kickoff meeting; coordinate with SPARC Post Award & PI for setup',
-      description: 'They will support project startup by establishing tracking tools and communication channels and coordinating kickoff activities with SPARC Post Award and the project team.' },
-    { id: 'closeout', name: 'Project Closeout', hours: 6, unit: 'year', timesPerYear: '',
-      tasks: 'Archive project documents; track and submit final deliverables; final meeting and summary memo',
-      description: 'They will support project closeout by ensuring final deliverables are submitted, project records are archived, and closeout documentation is completed.' },
-    { id: 'evaluation', name: 'Evaluation & Continuous Improvement', hours: 2.5, unit: 'month', timesPerYear: '',
-      tasks: 'Collect/analyze feedback; support external evaluator requests; review/refine workflows',
-      description: 'They will support evaluation and continuous improvement by coordinating feedback collection, supporting external evaluation activities, and refining project workflows as needed.' }
+    { id: 'monitoring', name: 'Monitoring project activities & workflow', hours: 2.5, unit: 'week', timesPerYear: '' },
+    { id: 'meeting_coord', name: 'Meeting coordination & facilitation', hours: 2.5, unit: 'week', timesPerYear: '' },
+    { id: 'communication', name: 'Communication & stakeholder engagement', hours: 2, unit: 'week', timesPerYear: '' },
+    { id: 'budget_monitoring', name: 'Budget monitoring & oversight', hours: 5.5, unit: 'month', timesPerYear: '' },
+    { id: 'reporting', name: 'Annual reporting & compliance', hours: 20, unit: 'year', timesPerYear: '' },
+    { id: 'quarterly_report', name: 'Quarterly progress report', hours: 6, unit: 'each', timesPerYear: 4 },
+    { id: 'doc_management', name: 'Documentation & knowledge management', hours: 1, unit: 'week', timesPerYear: '' },
+    { id: 'risk_mgmt', name: 'Risk management & issue resolution', hours: 2.5, unit: 'month', timesPerYear: '' },
+    { id: 'subaward_coord', name: 'Partner/subaward coordination', hours: 3, unit: 'month', timesPerYear: '' },
+    { id: 'launch', name: 'Project launch', hours: 8, unit: 'year', timesPerYear: '' },
+    { id: 'closeout', name: 'Project closeout', hours: 6, unit: 'year', timesPerYear: '' },
+    { id: 'evaluation', name: 'Evaluation & continuous improvement', hours: 2.5, unit: 'month', timesPerYear: '' }
   ]
 };
 
@@ -125,18 +98,10 @@ function calculate(config, project) {
     1 + subawards * s.subawardRate + (budget / 100000) * s.budgetRatePer100k);
   const totalHours = baseHours * multiplier;
 
-  const thresholds = String(s.budgetThresholds).split(/[\s,;]+/).filter(Boolean).map(Number);
-  const budgetRisk = thresholds.filter(t => budget > t).length;
-  const subawardRisk = Math.min(subawards, s.subawardScoreCap);
-  const riskScore = budgetRisk + subawardRisk;
-  const riskMax = thresholds.length + s.subawardScoreCap;
-  const riskLevel = riskScore >= s.highAt ? 'High' : riskScore >= s.moderateAt ? 'Moderate' : 'Low';
-
   return {
     baseHours, multiplier, totalHours,
     ftePercent: totalHours / s.fullTimeHours * 100,
-    studentHoursPerWeek: totalHours / s.studentWeeksPerYear,
-    budgetRisk, subawardRisk, riskScore, riskMax, riskLevel
+    studentHoursPerWeek: totalHours / s.studentWeeksPerYear
   };
 }
 
@@ -178,11 +143,10 @@ function esc(x) {
 }
 function setStatus(msg) { document.getElementById('status').textContent = msg; }
 
-// Settings may come back from the Sheet as text; make everything but the thresholds a number.
 function normalize(c) {
   for (const k of Object.keys(DEFAULT_CONFIG.settings)) {
     const v = c.settings[k] ?? DEFAULT_CONFIG.settings[k];
-    c.settings[k] = k === 'budgetThresholds' ? String(v) : Number(v);
+    c.settings[k] = Number(v);
   }
   return c;
 }
@@ -222,7 +186,7 @@ function renderUser() {
     '<table><tr><th></th><th>Activity</th><th>Expected</th><th>Hours/yr</th></tr>' +
     config.activities.map((a, i) => `<tr>
       <td><input type="checkbox" ${selected.includes(a.id) ? 'checked' : ''} onchange="toggle(${i}, this.checked)"></td>
-      <td>${esc(a.name)}${a.tasks ? `<div class="tasks">${esc(a.tasks)}</div>` : ''}</td>
+      <td>${esc(a.name)}</td>
       <td>${esc(a.hours)} hrs/${a.unit === 'each' ? 'each x ' + esc(a.timesPerYear) + '/yr' : esc(a.unit)}</td>
       <td>${annualHours(a, s).toFixed(1)}</td>
     </tr>`).join('') + '</table>';
@@ -236,8 +200,6 @@ function renderResults() {
     <tr><td><b>Total annualized hours</b></td><td><b>${r.totalHours.toFixed(1)}</b></td></tr>
     <tr><td><b>FTE % (${config.settings.fullTimeHours} hrs/yr)</b></td><td><b>${r.ftePercent.toFixed(1)}%</b></td></tr>
     <tr><td><b>Hours/wk (student, ${config.settings.studentWeeksPerYear} wks)</b></td><td><b>${r.studentHoursPerWeek.toFixed(1)}</b></td></tr>
-    <tr><td><b>Risk score</b></td><td><b>${r.riskScore} / ${r.riskMax} (${r.riskLevel})</b>
-      &mdash; budget ${r.budgetRisk}, subawards ${r.subawardRisk}</td></tr>
   </table>`;
 }
 
@@ -245,9 +207,7 @@ function renderAdmin() {
   document.getElementById('adminActivities').innerHTML =
     '<table><tr><th>Activity</th><th>Hours</th><th>Per</th><th>Times/yr (if "each")</th><th></th></tr>' +
     config.activities.map((a, i) => `<tr>
-      <td><input value="${esc(a.name)}" onchange="editActivity(${i}, 'name', this.value)" size="40">
-        <textarea rows="2" placeholder="Tasks" onchange="editActivity(${i}, 'tasks', this.value)">${esc(a.tasks)}</textarea>
-        <textarea rows="2" placeholder="Description" onchange="editActivity(${i}, 'description', this.value)">${esc(a.description)}</textarea></td>
+      <td><input value="${esc(a.name)}" onchange="editActivity(${i}, 'name', this.value)" size="40"></td>
       <td><input type="number" step="0.5" value="${esc(a.hours)}" onchange="editActivity(${i}, 'hours', Number(this.value))"></td>
       <td><select onchange="editActivity(${i}, 'unit', this.value)">
         ${['week', 'month', 'year', 'each'].map(u => `<option ${a.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
@@ -268,7 +228,7 @@ async function renderSaved() {
   const el = document.getElementById('savedProjects');
   if (list === null) { el.innerHTML = '<p>Saved projects go to the <b>Projects</b> tab of the Sheet.</p>'; return; }
   el.innerHTML = list.length ? '<p>Saved in this browser:</p><ul>' + list.map(p =>
-    `<li>${esc(p.savedAt)} &mdash; ${esc(p.name)}: ${p.results.totalHours.toFixed(1)} hrs, ${p.results.ftePercent.toFixed(1)}% FTE, risk ${p.results.riskLevel}</li>`
+    `<li>${esc(p.savedAt)} &mdash; ${esc(p.name)}: ${p.results.totalHours.toFixed(1)} hrs, ${p.results.ftePercent.toFixed(1)}% FTE</li>`
   ).join('') + '</ul>' : '';
 }
 
@@ -288,7 +248,7 @@ function editActivity(i, field, value) {
 }
 function addActivity() {
   const id = 'a' + Date.now();
-  config.activities.push({ id, name: 'New activity', hours: 1, unit: 'week', timesPerYear: '', tasks: '', description: '' });
+  config.activities.push({ id, name: 'New activity', hours: 1, unit: 'week', timesPerYear: '' });
   selected.push(id);
   renderAll();
 }
@@ -299,7 +259,7 @@ function removeActivity(i) {
   renderAll();
 }
 function editSetting(k, value) {
-  config.settings[k] = k === 'budgetThresholds' ? value : Number(value);
+  config.settings[k] = Number(value);
   renderAll();
 }
 

@@ -6,14 +6,14 @@
 <title>PM Effort Calculator</title>
 <style>
   :root {
-  --primary-red: #DB0000;
-  --dark-red: #990000;
-  --black: #000000;
-  --dark-gray: #333333;
-  --light-gray: #f4f4f4;
-  --border-color: #dddddd;
-  --white: #ffffff;
-}
+    --primary-red: #DB0000; /* SUU Official Red */
+    --dark-red: #990000;
+    --black: #000000;
+    --dark-gray: #333333;
+    --light-gray: #f4f4f4;
+    --border-color: #dddddd;
+    --white: #ffffff;
+  }
 
   body { 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -48,7 +48,7 @@
   }
 
   .logo-container img {
-    max-height: 60px; /* Adjust this based on your logo size */
+    max-height: 60px;
     width: auto;
     display: block;
   }
@@ -85,11 +85,18 @@
     font-size: 1.4rem;
   }
 
+  /* Mobile Responsive Table Wrapper */
+  .table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 15px;
+  }
+
   /* Tables */
   table { 
     border-collapse: collapse; 
     width: 100%; 
-    margin-top: 15px;
   }
   
   td, th { 
@@ -120,11 +127,20 @@
     border-radius: 4px;
     font-family: inherit;
     font-size: 0.95em;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, outline 0.2s;
   }
 
   input[type=number]:focus, input[type=text]:focus, select:focus {
     outline: none;
+    border-color: var(--primary-red);
+  }
+
+  /* High-Contrast Keyboard Focus Rings */
+  button:focus-visible, 
+  input:focus-visible, 
+  select:focus-visible {
+    outline: 3px solid var(--black);
+    outline-offset: 2px;
     border-color: var(--primary-red);
   }
   
@@ -199,6 +215,12 @@
     text-transform: uppercase;
   }
 
+  .tooltip-icon {
+    cursor: help;
+    text-decoration: underline dotted;
+    margin-left: 4px;
+    font-size: 0.85em;
+  }
 </style>
 </head>
 <body>
@@ -206,11 +228,11 @@
 <div class="container">
   <header class="app-header">
     <div class="logo-container">
-  <img src="https://lh3.googleusercontent.com/d/1cIvth3YfwxjgPgVF5PqcQYOwZnlRCPWJ" alt="Southern Utah University Logo">
-</div>
+      <img src="https://lh3.googleusercontent.com/d/1cIvth3YfwxjgPgVF5PqcQYOwZnlRCPWJ" alt="Southern Utah University Logo">
+    </div>
     <div class="title-container">
       <h1>PM Effort Calculator</h1>
-      <p id="status">Loading...</p>
+      <p id="status" aria-live="polite">Loading...</p>
     </div>
   </header>
 
@@ -266,7 +288,7 @@
     <div id="jsonTools" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
       <button class="btn-secondary" onclick="exportConfig()">Export Config (JSON)</button>
       <span style="margin-left: 15px; font-weight: 500; font-size: 0.9em;">Import Config:</span> 
-      <input type="file" accept=".json" onchange="importConfig(this)" style="font-size: 0.85em;">
+      <input type="file" accept=".json" onchange="importConfig(this)" style="font-size: 0.85em;" aria-label="Import configuration file">
     </div>
   </section>
 </div>
@@ -382,7 +404,7 @@ const DEFAULT_CONFIG = {
   ]
 };
 
-// ---------- Calculation (no page or storage code) ----------
+// ---------- Calculation ----------
 function annualHours(a, s) {
   const h = Number(a.hours) || 0;
   if (a.unit === 'week') return h * s.pmWeeksPerYear;
@@ -433,7 +455,7 @@ const store = IS_GAS ? {
   loadConfig: () => gasCall('getConfig'),
   saveConfig: c => gasCall('saveConfig', c),
   saveProject: p => gasCall('saveProject', p),
-  listProjects: async () => null // saved projects live in the Projects tab
+  listProjects: async () => null
 } : {
   loadConfig: async () => lsGet(CONFIG_KEY),
   saveConfig: async c => lsSet(CONFIG_KEY, c),
@@ -500,51 +522,77 @@ function renderAll() { renderUser(); renderAdmin(); renderResults(); }
 function renderUser() {
   const s = config.settings;
   document.getElementById('userActivities').innerHTML =
-    '<table><tr><th style="width: 40px; text-align: center;">✓</th><th>Activity</th><th>Expected</th><th>Hours/yr</th></tr>' +
+    '<div class="table-wrapper"><table><tr><th scope="col" style="width: 40px; text-align: center;">✓</th><th scope="col">Activity</th><th scope="col">Expected</th><th scope="col">Hours/yr</th></tr>' +
     config.activities.map((a, i) => `<tr>
-      <td style="text-align: center;"><input type="checkbox" style="transform: scale(1.3);" ${selected.includes(a.id) ? 'checked' : ''} onchange="toggle(${i}, this.checked)"></td>
+      <td style="text-align: center;"><input type="checkbox" aria-label="Select ${esc(a.name)}" style="transform: scale(1.3);" ${selected.includes(a.id) ? 'checked' : ''} onchange="toggle(${i}, this.checked)"></td>
       <td>
         <strong>${esc(a.name)}</strong>
         ${a.description ? `<span class="activity-desc">${esc(a.description)}</span>` : ''}
       </td>
       <td>${esc(a.hours)} hrs/${a.unit === 'each' ? 'each x ' + esc(a.timesPerYear) + '/yr' : esc(a.unit)}</td>
       <td style="font-weight: 600;">${annualHours(a, s).toFixed(1)}</td>
-    </tr>`).join('') + '</table>';
+    </tr>`).join('') + '</table></div>';
 }
 
 function renderResults() {
   const r = calculate(config, currentProject());
-  document.getElementById('results').innerHTML = `<table>
-    <tr><td>Base hours/yr</td><td>${r.baseHours.toFixed(1)}</td></tr>
-    <tr><td>Complexity multiplier</td><td>${r.multiplier.toFixed(2)}x</td></tr>
-    <tr style="background-color: #ffe6e6; border-top: 2px solid var(--primary-red);">
-      <td style="color: var(--primary-red);"><b>Total Annualized Hours</b></td>
-      <td style="color: var(--primary-red); font-size: 1.1em;"><b>${r.totalHours.toFixed(1)}</b></td>
+  document.getElementById('results').innerHTML = `<div class="table-wrapper"><table>
+    <tr>
+      <td>
+        <b>Base hours/yr</b>
+        <span title="Total calculated hours before applying complexity multipliers" class="tooltip-icon">ⓘ</span>
+      </td>
+      <td>${r.baseHours.toFixed(1)}</td>
     </tr>
-    <tr><td><b>FTE %</b> <span style="color:#666; font-size:0.85em; font-weight:normal;">(${config.settings.fullTimeHours} hrs/yr)</span></td><td><b>${r.ftePercent.toFixed(1)}%</b></td></tr>
-    <tr><td><b>Hours/wk</b> <span style="color:#666; font-size:0.85em; font-weight:normal;">(student, ${config.settings.studentWeeksPerYear} wks)</span></td><td><b>${r.studentHoursPerWeek.toFixed(1)}</b></td></tr>
-  </table>`;
+    <tr>
+      <td>
+        <b>Complexity multiplier</b>
+        <span title="Multiplier derived from subawards and project budget" class="tooltip-icon">ⓘ</span>
+      </td>
+      <td>${r.multiplier.toFixed(2)}x</td>
+    </tr>
+    <tr style="background-color: #ffe6e6; border-top: 2px solid var(--primary-red);">
+      <td style="color: var(--dark-red);"><b>Total Annualized Hours</b></td>
+      <td style="color: var(--dark-red); font-size: 1.1em;"><b>${r.totalHours.toFixed(1)}</b></td>
+    </tr>
+    <tr>
+      <td>
+        <b>FTE %</b> 
+        <span title="Full-Time Equivalent percentage based on ${config.settings.fullTimeHours} annual standard hours" class="tooltip-icon">ⓘ</span>
+        <span style="color:#666; font-size:0.85em; font-weight:normal;">(${config.settings.fullTimeHours} hrs/yr)</span>
+      </td>
+      <td><b>${r.ftePercent.toFixed(1)}%</b></td>
+    </tr>
+    <tr>
+      <td>
+        <b>Hours/wk</b> 
+        <span title="Weekly hours required for student worker based on ${config.settings.studentWeeksPerYear} active weeks" class="tooltip-icon">ⓘ</span>
+        <span style="color:#666; font-size:0.85em; font-weight:normal;">(student, ${config.settings.studentWeeksPerYear} wks)</span>
+      </td>
+      <td><b>${r.studentHoursPerWeek.toFixed(1)}</b></td>
+    </tr>
+  </table></div>`;
 }
 
 function renderAdmin() {
   document.getElementById('adminActivities').innerHTML =
-    '<table><tr><th>Activity</th><th>Description</th><th>Hours</th><th>Per</th><th>Times/yr (if "each")</th><th></th></tr>' +
+    '<div class="table-wrapper"><table><tr><th scope="col">Activity</th><th scope="col">Description</th><th scope="col">Hours</th><th scope="col">Per</th><th scope="col">Times/yr (if "each")</th><th scope="col"></th></tr>' +
     config.activities.map((a, i) => `<tr>
-      <td><input type="text" value="${esc(a.name)}" onchange="editActivity(${i}, 'name', this.value)" style="width: 180px;"></td>
-      <td><input type="text" value="${esc(a.description || '')}" onchange="editActivity(${i}, 'description', this.value)" placeholder="Activity description" class="admin-desc-input"></td>
-      <td><input type="number" step="0.5" value="${esc(a.hours)}" onchange="editActivity(${i}, 'hours', Number(this.value))" style="width: 60px;"></td>
-      <td><select onchange="editActivity(${i}, 'unit', this.value)" style="width: 90px;">
+      <td><input type="text" aria-label="Activity Name" value="${esc(a.name)}" onchange="editActivity(${i}, 'name', this.value)" style="width: 180px;"></td>
+      <td><input type="text" aria-label="Activity Description" value="${esc(a.description || '')}" onchange="editActivity(${i}, 'description', this.value)" placeholder="Activity description" class="admin-desc-input"></td>
+      <td><input type="number" aria-label="Activity Hours" step="0.5" value="${esc(a.hours)}" onchange="editActivity(${i}, 'hours', Number(this.value))" style="width: 60px;"></td>
+      <td><select aria-label="Activity Unit" onchange="editActivity(${i}, 'unit', this.value)" style="width: 90px;">
         ${['week', 'month', 'year', 'each'].map(u => `<option ${a.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
       </select></td>
-      <td><input type="number" value="${esc(a.timesPerYear)}" onchange="editActivity(${i}, 'timesPerYear', this.value)" style="width: 60px;"></td>
+      <td><input type="number" aria-label="Times Per Year" value="${esc(a.timesPerYear)}" onchange="editActivity(${i}, 'timesPerYear', this.value)" style="width: 60px;"></td>
       <td><button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85em;" onclick="removeActivity(${i})">Delete</button></td>
-    </tr>`).join('') + '</table>';
+    </tr>`).join('') + '</table></div>';
 
   document.getElementById('adminSettings').innerHTML =
-    '<table style="max-width: 500px;">' + Object.keys(config.settings).map(k => `<tr>
+    '<div class="table-wrapper"><table style="max-width: 500px;"><tr><th scope="col">Setting</th><th scope="col">Value</th></tr>' + Object.keys(config.settings).map(k => `<tr>
       <td style="font-weight: 500;">${k}</td>
-      <td><input type="number" value="${esc(config.settings[k])}" onchange="editSetting('${k}', this.value)" step="any"></td>
-    </tr>`).join('') + '</table>';
+      <td><input type="number" aria-label="${k}" value="${esc(config.settings[k])}" onchange="editSetting('${k}', this.value)" step="any"></td>
+    </tr>`).join('') + '</table></div>';
 }
 
 async function renderSaved() {

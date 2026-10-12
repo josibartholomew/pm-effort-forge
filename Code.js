@@ -1,9 +1,8 @@
 // PM Effort Calculator prototype: serves index.html and stores data in the Sheet.
 // Tabs: Activities (catalog), Settings (key/value), Projects (one row per saved project).
 // The defaults live in index.html; it seeds these tabs on first run.
-// This is Jane's comment hello!
 
-const ACTIVITY_HEADERS = ['id', 'name', 'hours', 'unit', 'timesPerYear'];
+const ACTIVITY_HEADERS = ['id', 'name', 'description', 'hours', 'unit', 'timesPerYear'];
 const PROJECT_HEADERS = ['Saved', 'Project', 'Budget', 'Subawards', 'Activities',
   'Base hrs/yr', 'Multiplier', 'Total hrs/yr', 'FTE %', 'Student hrs/wk'];
 
@@ -43,9 +42,10 @@ function getConfig() {
     .map((r, i) => ({
       id: String(r[0] || 'row' + (i + 2)), // rows added by hand may have no id
       name: String(r[1]),
-      hours: Number(r[2]) || 0,
-      unit: String(r[3] || 'year').toLowerCase(),
-      timesPerYear: r[4]
+      description: String(r[2] || ''),
+      hours: Number(r[3]) || 0,
+      unit: String(r[4] || 'year').toLowerCase(),
+      timesPerYear: r[5]
     }));
 
   const settings = {};

@@ -24,8 +24,9 @@
     line-height: 1.5;
   }
 
+  /* Expanded Container for Wider View */
   .container {
-    max-width: 1000px;
+    max-width: 1200px;
     margin: 0 auto;
   }
 
@@ -36,9 +37,8 @@
     background-color: var(--white);
     padding: 20px 30px;
     border-top: 5px solid var(--primary-red);
-    border-radius: 8px;
+    border-radius: 8px 8px 0 0;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    margin-bottom: 24px;
   }
 
   .logo-container {
@@ -68,6 +68,47 @@
     font-weight: 500;
   }
 
+  /* Tab Navigation */
+  .tab-nav {
+    display: flex;
+    background-color: var(--black);
+    border-radius: 0 0 8px 8px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+
+  .tab-button {
+    background: none;
+    border: none;
+    color: var(--white);
+    padding: 14px 24px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    border-bottom: 4px solid transparent;
+    border-radius: 0;
+  }
+
+  .tab-button:hover {
+    background-color: #222222;
+  }
+
+  .tab-button.active {
+    background-color: var(--white);
+    color: var(--primary-red);
+    border-bottom: 4px solid var(--primary-red);
+  }
+
+  /* Tab Panels */
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
   /* Layout Cards */
   section { 
     background: var(--white); 
@@ -91,6 +132,10 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     margin-top: 15px;
+  }
+
+  .table-wrapper table {
+    min-width: 650px;
   }
 
   /* Tables */
@@ -121,7 +166,8 @@
 
   /* Form Elements */
   input[type=number], input[type=text], select { 
-    width: 120px; 
+    width: 100%; 
+    box-sizing: border-box;
     padding: 8px 10px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
@@ -143,18 +189,13 @@
     outline-offset: 2px;
     border-color: var(--primary-red);
   }
-  
-  .admin-desc-input { 
-    width: 95%; 
-    min-width: 220px; 
-  }
 
   .activity-desc { 
-    color: #666; 
-    font-size: 0.85em; 
+    color: #555555; 
+    font-size: 0.88em; 
     display: block; 
     margin-top: 4px; 
-    line-height: 1.4;
+    line-height: 1.45;
   }
 
   /* Buttons */
@@ -194,7 +235,7 @@
 
   .input-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 15px;
     margin-bottom: 20px;
     background: var(--light-gray);
@@ -221,6 +262,80 @@
     margin-left: 4px;
     font-size: 0.85em;
   }
+
+  /* -------------------------------------------------------------
+     PRINT / PDF STYLES
+  ------------------------------------------------------------- */
+  @media print {
+    body {
+      background-color: #ffffff !important;
+      color: #000000 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    .container {
+      max-width: 100% !important;
+      margin: 0 !important;
+    }
+
+    /* Hide non-essential navigation & interactive controls */
+    .tab-nav,
+    .button-group,
+    #jsonTools,
+    #status,
+    .tab-content:not(.active),
+    .tooltip-icon {
+      display: none !important;
+    }
+
+    /* Clean Card Styling for Print */
+    section {
+      box-shadow: none !important;
+      border: 1px solid #cccccc !important;
+      padding: 15px 20px !important;
+      margin-bottom: 15px !important;
+      page-break-inside: avoid;
+    }
+
+    .app-header {
+      box-shadow: none !important;
+      border-top: 4px solid var(--primary-red) !important;
+      padding: 10px 0 !important;
+      margin-bottom: 15px !important;
+      border-bottom: 2px solid var(--black) !important;
+      border-radius: 0 !important;
+    }
+
+    /* Hide unselected activities in user table when printing */
+    tr.unselected-row {
+      display: none !important;
+    }
+
+    /* Hide checkbox column on printout */
+    .checkbox-col {
+      display: none !important;
+    }
+
+    /* Format inputs to render cleanly as standard text */
+    input[type=text], input[type=number] {
+      border: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+      font-weight: 600 !important;
+    }
+
+    .table-wrapper table {
+      min-width: 100% !important;
+    }
+
+    th {
+      background-color: var(--black) !important;
+      color: var(--white) !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
 </style>
 </head>
 <body>
@@ -236,64 +351,96 @@
     </div>
   </header>
 
-  <section>
-    <h2>Project Details</h2>
-    <div class="input-grid">
-      <div class="input-group">
-        <label for="projName">Project Name</label>
-        <input id="projName" type="text" value="Test project" style="width: 90%;">
-      </div>
-      <div class="input-group">
-        <label for="projBudget">Annual Budget ($)</label>
-        <input id="projBudget" type="number" value="250000">
-      </div>
-      <div class="input-group">
-        <label for="projSubawards">Subawards</label>
-        <input id="projSubawards" type="number" value="1">
-      </div>
-    </div>
-    
-    <div id="userActivities"></div>
-    
-    <div class="button-group">
-      <button class="btn-secondary" onclick="selectAll(true)">Select All</button> 
-      <button class="btn-secondary" onclick="selectAll(false)">Select None</button>
-    </div>
-  </section>
+  <nav class="tab-nav" role="tablist" aria-label="Main Navigation">
+    <button class="tab-button active" role="tab" aria-selected="true" aria-controls="tab-calculator" id="btn-tab-calculator" onclick="switchTab('tab-calculator', this)">Effort Calculator</button>
+    <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-saved" id="btn-tab-saved" onclick="switchTab('tab-saved', this)">Saved Projects</button>
+    <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-admin" id="btn-tab-admin" onclick="switchTab('tab-admin', this)">Admin & Settings</button>
+  </nav>
 
-  <section>
-    <h2>Results</h2>
-    <div id="results"></div>
-    <div class="button-group">
-      <button onclick="saveProject()">Save Project</button>
-    </div>
-    <div id="savedProjects" style="margin-top: 15px; font-size: 0.9em;"></div>
-  </section>
+  <!-- TAB 1: CALCULATOR -->
+  <div id="tab-calculator" class="tab-content active" role="tabpanel" aria-labelledby="btn-tab-calculator">
+    <section>
+      <h2>Project Details</h2>
+      <div class="input-grid">
+        <div class="input-group">
+          <label for="projName">Project Name</label>
+          <input id="projName" type="text" value="Test project">
+        </div>
+        <div class="input-group">
+          <label for="projBudget">Annual Budget ($)</label>
+          <input id="projBudget" type="number" value="250000">
+        </div>
+        <div class="input-group">
+          <label for="projSubawards">Subawards</label>
+          <input id="projSubawards" type="number" value="1">
+        </div>
+      </div>
+      
+      <div id="userActivities"></div>
+      
+      <div class="button-group">
+        <button class="btn-secondary" onclick="selectAll(true)">Select All</button> 
+        <button class="btn-secondary" onclick="selectAll(false)">Select None</button>
+      </div>
+    </section>
 
-  <section>
-    <h2>Admin: Activities</h2>
-    <div id="adminActivities"></div>
-    <div class="button-group">
-      <button class="btn-secondary" onclick="addActivity()">+ Add Activity</button>
-    </div>
-    
-    <h2 style="margin-top: 30px;">Admin: Settings</h2>
-    <div id="adminSettings"></div>
-    
-    <div class="button-group">
-      <button onclick="saveAdmin()">Save Admin Changes</button>
-      <button class="btn-secondary" onclick="resetDefaults()">Reset to Defaults</button>
-    </div>
-    
-    <div id="jsonTools" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-      <button class="btn-secondary" onclick="exportConfig()">Export Config (JSON)</button>
-      <span style="margin-left: 15px; font-weight: 500; font-size: 0.9em;">Import Config:</span> 
-      <input type="file" accept=".json" onchange="importConfig(this)" style="font-size: 0.85em;" aria-label="Import configuration file">
-    </div>
-  </section>
+    <section>
+      <h2>Calculated Results</h2>
+      <div id="results"></div>
+      <div class="button-group">
+        <button onclick="saveProject()">Save Project</button>
+        <button class="btn-secondary" onclick="window.print()">🖨️ Print / Export PDF Summary</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- TAB 2: SAVED PROJECTS -->
+  <div id="tab-saved" class="tab-content" role="tabpanel" aria-labelledby="btn-tab-saved">
+    <section>
+      <h2>Saved Project Log</h2>
+      <div id="savedProjects" style="margin-top: 15px; font-size: 0.95em;"></div>
+    </section>
+  </div>
+
+  <!-- TAB 3: ADMIN & SETTINGS -->
+  <div id="tab-admin" class="tab-content" role="tabpanel" aria-labelledby="btn-tab-admin">
+    <section>
+      <h2>Admin: Activity Catalog</h2>
+      <div id="adminActivities"></div>
+      <div class="button-group">
+        <button class="btn-secondary" onclick="addActivity()">+ Add Activity</button>
+      </div>
+      
+      <h2 style="margin-top: 30px;">Admin: Calculator Settings</h2>
+      <div id="adminSettings"></div>
+      
+      <div class="button-group">
+        <button onclick="saveAdmin()">Save Admin Changes</button>
+        <button class="btn-secondary" onclick="resetDefaults()">Reset to Defaults</button>
+      </div>
+      
+      <div id="jsonTools" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+        <button class="btn-secondary" onclick="exportConfig()">Export Config (JSON)</button>
+        <span style="margin-left: 15px; font-weight: 500; font-size: 0.9em;">Import Config:</span> 
+        <input type="file" accept=".json" onchange="importConfig(this)" style="font-size: 0.85em;" aria-label="Import configuration file">
+      </div>
+    </section>
+  </div>
 </div>
 
 <script>
+// ---------- Tab Navigation Helper ----------
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+  document.querySelectorAll('.tab-button').forEach(tb => {
+    tb.classList.remove('active');
+    tb.setAttribute('aria-selected', 'false');
+  });
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+}
+
 // ---------- Defaults ----------
 const DEFAULT_CONFIG = {
   settings: {
@@ -431,7 +578,8 @@ function calculate(config, project) {
     multiplier,
     totalHours,
     ftePercent: (totalHours / s.fullTimeHours) * 100,
-    studentHoursPerWeek: totalHours / s.studentWeeksPerYear
+    studentHoursPerWeek: totalHours / s.studentWeeksPerYear,
+    chosenActivities: chosen
   };
 }
 
@@ -522,23 +670,27 @@ function renderAll() { renderUser(); renderAdmin(); renderResults(); }
 function renderUser() {
   const s = config.settings;
   document.getElementById('userActivities').innerHTML =
-    '<div class="table-wrapper"><table><tr><th scope="col" style="width: 40px; text-align: center;">✓</th><th scope="col">Activity</th><th scope="col">Expected</th><th scope="col">Hours/yr</th></tr>' +
-    config.activities.map((a, i) => `<tr>
-      <td style="text-align: center;"><input type="checkbox" aria-label="Select ${esc(a.name)}" style="transform: scale(1.3);" ${selected.includes(a.id) ? 'checked' : ''} onchange="toggle(${i}, this.checked)"></td>
-      <td>
-        <strong>${esc(a.name)}</strong>
-        ${a.description ? `<span class="activity-desc">${esc(a.description)}</span>` : ''}
-      </td>
-      <td>${esc(a.hours)} hrs/${a.unit === 'each' ? 'each x ' + esc(a.timesPerYear) + '/yr' : esc(a.unit)}</td>
-      <td style="font-weight: 600;">${annualHours(a, s).toFixed(1)}</td>
-    </tr>`).join('') + '</table></div>';
+    '<div class="table-wrapper"><table><tr><th scope="col" class="checkbox-col" style="width: 45px; text-align: center;">✓</th><th scope="col" style="width: 60%;">Activity & Description</th><th scope="col" style="width: 25%;">Expected</th><th scope="col" style="width: 15%;">Hours/yr</th></tr>' +
+    config.activities.map((a, i) => {
+      const isSelected = selected.includes(a.id);
+      return `<tr class="${isSelected ? 'selected-row' : 'unselected-row'}">
+        <td class="checkbox-col" style="text-align: center;"><input type="checkbox" aria-label="Select ${esc(a.name)}" style="transform: scale(1.3);" ${isSelected ? 'checked' : ''} onchange="toggle(${i}, this.checked)"></td>
+        <td>
+          <strong style="font-size: 1rem; color: var(--black);">${esc(a.name)}</strong>
+          ${a.description ? `<span class="activity-desc">${esc(a.description)}</span>` : ''}
+        </td>
+        <td>${esc(a.hours)} hrs/${a.unit === 'each' ? 'each x ' + esc(a.timesPerYear) + '/yr' : esc(a.unit)}</td>
+        <td style="font-weight: 600;">${annualHours(a, s).toFixed(1)}</td>
+      </tr>`;
+    }).join('') + '</table></div>';
 }
 
 function renderResults() {
   const r = calculate(config, currentProject());
+
   document.getElementById('results').innerHTML = `<div class="table-wrapper"><table>
     <tr>
-      <td>
+      <td style="width: 70%;">
         <b>Base hours/yr</b>
         <span title="Total calculated hours before applying complexity multipliers" class="tooltip-icon">ⓘ</span>
       </td>
@@ -576,20 +728,20 @@ function renderResults() {
 
 function renderAdmin() {
   document.getElementById('adminActivities').innerHTML =
-    '<div class="table-wrapper"><table><tr><th scope="col">Activity</th><th scope="col">Description</th><th scope="col">Hours</th><th scope="col">Per</th><th scope="col">Times/yr (if "each")</th><th scope="col"></th></tr>' +
+    '<div class="table-wrapper"><table><tr><th scope="col" style="width: 25%;">Activity Name</th><th scope="col" style="width: 45%;">Description</th><th scope="col" style="width: 10%;">Hours</th><th scope="col" style="width: 10%;">Per</th><th scope="col" style="width: 10%;">Times/yr</th><th scope="col"></th></tr>' +
     config.activities.map((a, i) => `<tr>
-      <td><input type="text" aria-label="Activity Name" value="${esc(a.name)}" onchange="editActivity(${i}, 'name', this.value)" style="width: 180px;"></td>
-      <td><input type="text" aria-label="Activity Description" value="${esc(a.description || '')}" onchange="editActivity(${i}, 'description', this.value)" placeholder="Activity description" class="admin-desc-input"></td>
-      <td><input type="number" aria-label="Activity Hours" step="0.5" value="${esc(a.hours)}" onchange="editActivity(${i}, 'hours', Number(this.value))" style="width: 60px;"></td>
-      <td><select aria-label="Activity Unit" onchange="editActivity(${i}, 'unit', this.value)" style="width: 90px;">
+      <td><input type="text" aria-label="Activity Name" value="${esc(a.name)}" onchange="editActivity(${i}, 'name', this.value)"></td>
+      <td><input type="text" aria-label="Activity Description" value="${esc(a.description || '')}" onchange="editActivity(${i}, 'description', this.value)" placeholder="Activity description"></td>
+      <td><input type="number" aria-label="Activity Hours" step="0.5" value="${esc(a.hours)}" onchange="editActivity(${i}, 'hours', Number(this.value))"></td>
+      <td><select aria-label="Activity Unit" onchange="editActivity(${i}, 'unit', this.value)">
         ${['week', 'month', 'year', 'each'].map(u => `<option ${a.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
       </select></td>
-      <td><input type="number" aria-label="Times Per Year" value="${esc(a.timesPerYear)}" onchange="editActivity(${i}, 'timesPerYear', this.value)" style="width: 60px;"></td>
+      <td><input type="number" aria-label="Times Per Year" value="${esc(a.timesPerYear)}" onchange="editActivity(${i}, 'timesPerYear', this.value)"></td>
       <td><button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85em;" onclick="removeActivity(${i})">Delete</button></td>
     </tr>`).join('') + '</table></div>';
 
   document.getElementById('adminSettings').innerHTML =
-    '<div class="table-wrapper"><table style="max-width: 500px;"><tr><th scope="col">Setting</th><th scope="col">Value</th></tr>' + Object.keys(config.settings).map(k => `<tr>
+    '<div class="table-wrapper"><table style="max-width: 600px;"><tr><th scope="col" style="width: 60%;">Setting</th><th scope="col" style="width: 40%;">Value</th></tr>' + Object.keys(config.settings).map(k => `<tr>
       <td style="font-weight: 500;">${k}</td>
       <td><input type="number" aria-label="${k}" value="${esc(config.settings[k])}" onchange="editSetting('${k}', this.value)" step="any"></td>
     </tr>`).join('') + '</table></div>';
@@ -598,10 +750,10 @@ function renderAdmin() {
 async function renderSaved() {
   const list = await store.listProjects();
   const el = document.getElementById('savedProjects');
-  if (list === null) { el.innerHTML = '<p style="color: var(--dark-gray);"><em>Note: Saved projects go to the <b>Projects</b> tab of your connected Google Sheet.</em></p>'; return; }
+  if (list === null) { el.innerHTML = '<p style="color: var(--dark-gray);"><em>Note: Saved projects go directly to the <b>Projects</b> tab of your connected Google Sheet.</em></p>'; return; }
   el.innerHTML = list.length ? '<p><strong>Saved locally in this browser:</strong></p><ul style="color: var(--dark-gray); padding-left: 20px;">' + list.map(p =>
     `<li style="margin-bottom: 6px;">${esc(p.savedAt)} &mdash; <strong>${esc(p.name)}</strong>: ${p.results.totalHours.toFixed(1)} hrs, ${p.results.ftePercent.toFixed(1)}% FTE</li>`
-  ).join('') + '</ul>' : '';
+  ).join('') + '</ul>' : '<p style="color: var(--dark-gray);">No saved projects found in local browser storage.</p>';
 }
 
 // ---------- Actions ----------

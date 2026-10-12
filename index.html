@@ -108,7 +108,6 @@
     display: block;
   }
 
-  /* Layout Cards */
   section { 
     background: var(--white); 
     border-radius: 8px; 
@@ -125,7 +124,6 @@
     font-size: 1.4rem;
   }
 
-  /* Mobile Responsive Table Wrapper */
   .table-wrapper {
     width: 100%;
     overflow-x: auto;
@@ -133,7 +131,6 @@
     margin-top: 15px;
   }
 
-  /* Tables */
   .table-wrapper table {
     min-width: 650px;
   }
@@ -168,7 +165,6 @@
     background-color: #fcfcfc;
   }
 
-  /* Form Elements */
   input[type=number], input[type=text], select { 
     width: 100%; 
     box-sizing: border-box;
@@ -185,7 +181,6 @@
     border-color: var(--primary-red);
   }
 
-  /* High-Contrast Keyboard Focus Rings */
   button:focus-visible, 
   input:focus-visible, 
   select:focus-visible {
@@ -202,7 +197,6 @@
     line-height: 1.45;
   }
 
-  /* Buttons */
   button {
     background-color: var(--primary-red);
     color: var(--white);
@@ -219,7 +213,6 @@
     background-color: var(--dark-red);
   }
 
-  button:active {
   button:disabled {
     background-color: #ccc;
     cursor: not-allowed;
@@ -371,11 +364,6 @@
         </div>
         <div class="input-group">
           <label for="projBudget">Annual Budget ($)</label>
-          <input id="projBudget" type="number" value="250000">
-        </div>
-        <div class="input-group">
-          <label for="projSubawards">Subawards</label>
-          <input id="projSubawards" type="number" value="1">
           <input id="projBudget" type="number" value="250000" min="0">
         </div>
         <div class="input-group">
@@ -396,7 +384,6 @@
       <h2>Calculated Results</h2>
       <div id="results"></div>
       <div class="button-group">
-        <button onclick="saveProject()">Save Project</button>
         <button id="btnSaveProject" onclick="saveProject()">Save Project</button>
         <button class="btn-secondary" onclick="window.print()">🖨️ Print / Export PDF Summary</button>
       </div>
@@ -424,7 +411,6 @@
       <div id="adminSettings"></div>
       
       <div class="button-group">
-        <button onclick="saveAdmin()">Save Admin Changes</button>
         <button id="btnSaveAdmin" onclick="saveAdmin()">Save Admin Changes</button>
         <button class="btn-secondary" onclick="resetDefaults()">Reset to Defaults</button>
       </div>
@@ -463,106 +449,6 @@ const DEFAULT_CONFIG = {
     multiplierCap: 2           // multiplier max cap
   },
   activities: [
-    { 
-      id: 'monitoring', 
-      name: 'Monitoring project activities & workflow', 
-      description: 'Tracks project workflows, maintains work plans/deliverable logs, follows up on assigned tasks, and ensures activities stay on schedule.', 
-      hours: 2.5, 
-      unit: 'week', 
-      timesPerYear: '' 
-    },
-    { 
-      id: 'meeting_coord', 
-      name: 'Meeting coordination & facilitation', 
-      description: 'Schedules and facilitates project meetings, prepares agendas, gathers status updates, and tracks action items.', 
-      hours: 2.5, 
-      unit: 'week', 
-      timesPerYear: '' 
-    },
-    { 
-      id: 'communication', 
-      name: 'Communication & stakeholder engagement', 
-      description: 'Manages internal and external communications, distributes meeting documentation, and provides routine status summaries.', 
-      hours: 2, 
-      unit: 'week', 
-      timesPerYear: '' 
-    },
-    { 
-      id: 'budget_monitoring', 
-      name: 'Budget monitoring & oversight', 
-      description: 'Provides financial oversight by tracking expenditures, reconciling budgets, coordinating with SPARC/sponsors, and supporting hiring/purchases.', 
-      hours: 5.5, 
-      unit: 'month', 
-      timesPerYear: '' 
-    },
-    { 
-      id: 'reporting', 
-      name: 'Annual reporting & compliance', 
-      description: 'Coordinates sponsor reporting by collecting data, compiling report sections, and ensuring on-time deliverable submissions.', 
-      hours: 20, 
-      unit: 'year', 
-      timesPerYear: '' 
-    },
-    { 
-      id: 'quarterly_report', 
-      name: 'Quarterly progress report', 
-      description: 'Drafts and submits quarterly progress reports, tracking sub-deliverables and sponsor-required milestones.', 
-      hours: 6, 
-      unit: 'each', 
-      timesPerYear: 4 
-    },
-    { 
-      id: 'doc_management', 
-      name: 'Documentation & knowledge management', 
-      description: 'Maintains organized shared repositories and manages file version control for project templates and records.', 
-      hours: 1, 
-      unit: 'week', 
-      timesPerYear: '' 
-    },
-    { 
-      id: 'risk_mgmt', 
-      name: 'Risk management & issue resolution', 
-      description: 'Supports proactive risk management by identifying potential roadblocks, maintaining a risk log, and resolving emerging issues.', 
-      hours: 2.5, 
-      unit: 'month', 
-      timesPerYear: '' 
-    },
-    { 
-      id: 'subaward_coord', 
-      name: 'Partner/subaward coordination', 
-      description: 'Manages external subcontracts, coordinates partner institution communication, and tracks subrecipient progress and reports.', 
-      hours: 3, 
-      unit: 'month', 
-      timesPerYear: '' 
-    },
-    { 
-      id: 'launch', 
-      name: 'Project launch', 
-      description: 'Establishes startup tracking tools, prepares kickoff meetings, and coordinates setup with SPARC Post Award.', 
-      hours: 8, 
-      unit: 'year', 
-      timesPerYear: '' 
-    },
-    { 
-      id: 'closeout', 
-      name: 'Project closeout', 
-      description: 'Oversees project closeout, ensuring final deliverables are submitted, records archived, and closeout memos completed.', 
-      hours: 6, 
-      unit: 'year', 
-      timesPerYear: '' 
-    },
-    { 
-      id: 'evaluation', 
-      name: 'Evaluation & continuous improvement', 
-      description: 'Coordinates feedback collection, assists external evaluator requests, and refines operational workflows.', 
-      hours: 2.5, 
-      unit: 'month', 
-      timesPerYear: '' 
-    }
-  ]
-};
-
-// ---------- Calculation ----------
     { id: 'monitoring', name: 'Monitoring project activities & workflow', description: 'Tracks project workflows, maintains work plans/deliverable logs, follows up on assigned tasks, and ensures activities stay on schedule.', hours: 2.5, unit: 'week', timesPerYear: '' },
     { id: 'meeting_coord', name: 'Meeting coordination & facilitation', description: 'Schedules and facilitates project meetings, prepares agendas, gathers status updates, and tracks action items.', hours: 2.5, unit: 'week', timesPerYear: '' },
     { id: 'communication', name: 'Communication & stakeholder engagement', description: 'Manages internal and external communications, distributes meeting documentation, and provides routine status summaries.', hours: 2, unit: 'week', timesPerYear: '' },
@@ -595,8 +481,6 @@ function calculate(config, project) {
   const subawards = Math.max(0, Number(project.subawards) || 0);
 
   const multiplier = Math.min(
-    s.multiplierCap,
-    1 + (subawards * s.subawardRate) + ((budget / 100000) * s.budgetRatePer100k)
     s.multiplierCap || 2,
     1 + (subawards * (s.subawardRate || 0)) + ((budget / 100000) * (s.budgetRatePer100k || 0))
   );
@@ -609,8 +493,9 @@ function calculate(config, project) {
     baseHours,
     multiplier,
     totalHours,
-    ftePercent: (totalHours / s.fullTimeHours) * 100,
-    studentHoursPerWeek: totalHours / s.studentWeeksPerYear
+    ftePercent: fteHours > 0 ? (totalHours / fteHours) * 100 : 0,
+    studentHoursPerWeek: studentWeeks > 0 ? totalHours / studentWeeks : 0,
+    chosenActivities: chosen
   };
 }
 
@@ -634,7 +519,7 @@ const store = IS_GAS ? {
   loadConfig: () => gasCall('getConfig'),
   saveConfig: c => gasCall('saveConfig', c),
   saveProject: p => gasCall('saveProject', p),
-  listProjects: async () => null
+  listProjects: () => gasCall('getSavedProjects')
 } : {
   loadConfig: async () => lsGet(CONFIG_KEY),
   saveConfig: async c => lsSet(CONFIG_KEY, c),
@@ -683,7 +568,7 @@ async function init() {
     config = normalize(c);
     selected = config.activities.map(a => a.id);
     if (IS_GAS) document.getElementById('jsonTools').style.display = 'none';
-    setStatus(IS_GAS ? 'Data synced with Google Sheet' : 'Working locally (browser storage)');
+    setStatus(IS_GAS ? 'Synced with Google Sheet' : 'Working locally (Browser storage)');
     renderAll();
     renderSaved();
   } catch (e) {
@@ -705,20 +590,24 @@ function renderAll() { renderUser(); renderAdmin(); renderResults(); }
 function renderUser() {
   const s = config.settings;
   document.getElementById('userActivities').innerHTML =
-    '<div class="table-wrapper"><table><tr><th scope="col" style="width: 45px; text-align: center;">✓</th><th scope="col" style="width: 60%;">Activity & Description</th><th scope="col" style="width: 25%;">Expected</th><th scope="col" style="width: 15%;">Hours/yr</th></tr>' +
-    config.activities.map((a, i) => `<tr>
-      <td style="text-align: center;"><input type="checkbox" aria-label="Select ${esc(a.name)}" style="transform: scale(1.3);" ${selected.includes(a.id) ? 'checked' : ''} onchange="toggle(${i}, this.checked)"></td>
-      <td>
-        <strong style="font-size: 1rem; color: var(--black);">${esc(a.name)}</strong>
-        ${a.description ? `<span class="activity-desc">${esc(a.description)}</span>` : ''}
-      </td>
-      <td>${esc(a.hours)} hrs/${a.unit === 'each' ? 'each x ' + esc(a.timesPerYear) + '/yr' : esc(a.unit)}</td>
-      <td style="font-weight: 600;">${annualHours(a, s).toFixed(1)}</td>
-    </tr>`).join('') + '</table></div>';
+    '<div class="table-wrapper"><table><tr><th scope="col" class="checkbox-col" style="width: 45px; text-align: center;">✓</th><th scope="col" style="width: 60%;">Activity & Description</th><th scope="col" style="width: 25%;">Expected</th><th scope="col" style="width: 15%;">Hours/yr</th></tr>' +
+    config.activities.map((a, i) => {
+      const isSelected = selected.includes(a.id);
+      return `<tr id="activity-row-${i}" class="${isSelected ? 'selected-row' : 'unselected-row'}">
+        <td class="checkbox-col" style="text-align: center;"><input type="checkbox" aria-label="Select ${esc(a.name)}" style="transform: scale(1.3);" ${isSelected ? 'checked' : ''} onchange="toggle(${i}, this.checked)"></td>
+        <td>
+          <strong style="font-size: 1rem; color: var(--black);">${esc(a.name)}</strong>
+          ${a.description ? `<span class="activity-desc">${esc(a.description)}</span>` : ''}
+        </td>
+        <td>${esc(a.hours)} hrs/${a.unit === 'each' ? 'each x ' + esc(a.timesPerYear) + '/yr' : esc(a.unit)}</td>
+        <td style="font-weight: 600;">${annualHours(a, s).toFixed(1)}</td>
+      </tr>`;
+    }).join('') + '</table></div>';
 }
 
 function renderResults() {
   const r = calculate(config, currentProject());
+
   document.getElementById('results').innerHTML = `<div class="table-wrapper"><table>
     <tr>
       <td style="width: 70%;">
@@ -780,10 +669,6 @@ function renderAdmin() {
 
 async function renderSaved() {
   const el = document.getElementById('savedProjects');
-  if (list === null) { el.innerHTML = '<p style="color: var(--dark-gray);"><em>Note: Saved projects go directly to the <b>Projects</b> tab of your connected Google Sheet.</em></p>'; return; }
-  el.innerHTML = list.length ? '<p><strong>Saved locally in this browser:</strong></p><ul style="color: var(--dark-gray); padding-left: 20px;">' + list.map(p =>
-    `<li style="margin-bottom: 6px;">${esc(p.savedAt)} &mdash; <strong>${esc(p.name)}</strong>: ${p.results.totalHours.toFixed(1)} hrs, ${p.results.ftePercent.toFixed(1)}% FTE</li>`
-  ).join('') + '</ul>' : '<p style="color: var(--dark-gray);">No saved projects found in local browser storage.</p>';
   try {
     const list = await store.listProjects();
     if (!list || !list.length) {
@@ -869,8 +754,6 @@ async function saveAdmin() {
   const btn = document.getElementById('btnSaveAdmin');
   btn.disabled = true;
   setStatus('Saving admin changes...');
-  try { await store.saveConfig(config); setStatus('Admin changes saved successfully.'); }
-  catch (e) { setStatus('Error saving: ' + e); }
   try { 
     await store.saveConfig(config); 
     setStatus('Admin changes saved successfully.'); 

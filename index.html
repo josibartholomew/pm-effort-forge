@@ -259,6 +259,28 @@
     text-transform: uppercase;
   }
 
+  .header-actions {
+    margin-left: auto;
+  }
+
+  .source-option {
+    display: block;
+    margin: 8px 0;
+    font-weight: 500;
+  }
+
+  .source-option input {
+    margin-right: 8px;
+    transform: scale(1.2);
+  }
+
+  .source-note {
+    color: #666666;
+    font-size: 0.85em;
+    font-weight: normal;
+    margin-left: 6px;
+  }
+
   .tooltip-icon {
     cursor: help;
     text-decoration: underline dotted;
@@ -283,6 +305,8 @@
     .tab-nav,
     .button-group,
     #jsonTools,
+    #inputPanel,
+    .header-actions,
     #status,
     .tab-content:not(.active),
     .tooltip-icon {
@@ -345,6 +369,9 @@
       <h1>PM Effort Calculator</h1>
       <p id="status" aria-live="polite">Loading...</p>
     </div>
+    <div class="header-actions">
+      <button id="btnInput" class="btn-secondary" aria-expanded="false" aria-controls="inputPanel" onclick="toggleInputPanel()">Input</button>
+    </div>
   </header>
 
   <nav class="tab-nav" role="tablist" aria-label="Main Navigation">
@@ -352,6 +379,25 @@
     <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-saved" id="btn-tab-saved" onclick="switchTab('tab-saved', this)">Saved Projects</button>
     <button class="tab-button" role="tab" aria-selected="false" aria-controls="tab-admin" id="btn-tab-admin" onclick="switchTab('tab-admin', this)">Admin & Settings</button>
   </nav>
+
+  <!-- INPUT SOURCE PANEL -->
+  <section id="inputPanel" hidden>
+    <h2>Input Source</h2>
+    <p style="margin-top: 0;">Choose where the activity catalog, descriptions, and calculator settings come from.</p>
+    <label class="source-option">
+      <input type="radio" name="source" value="sheet" onchange="setSource(this.value)">Connected Google Sheet
+      <span id="sheetNote" class="source-note"></span>
+    </label>
+    <label class="source-option">
+      <input type="radio" name="source" value="csv" onchange="setSource(this.value)">Uploaded CSV
+      <span class="source-note">(stored in this browser only)</span>
+    </label>
+    <div class="button-group">
+      <button class="btn-secondary" onclick="document.getElementById('csvFile').click()">Upload CSV</button>
+      <button class="btn-secondary" onclick="downloadCsv()">Download CSV</button>
+      <input type="file" id="csvFile" accept=".csv,text/csv" onchange="uploadCsv(this)" hidden>
+    </div>
+  </section>
 
   <!-- TAB 1: CALCULATOR -->
   <div id="tab-calculator" class="tab-content active" role="tabpanel" aria-labelledby="btn-tab-calculator">
@@ -464,6 +510,8 @@ const DEFAULT_CONFIG = {
   ]
 };
 
+const UNITS = ['week', 'month', 'year', 'each'];
+
 // ---------- Calculations ----------
 function annualHours(a, s) {
   const h = Number(a.hours) || 0;
@@ -515,17 +563,31 @@ function lsSet(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { alert('Could not save in this browser: ' + e); }
 }
 
+// Admin config source: 'sheet' (connected Google Sheet) or 'csv' (uploaded CSV / browser storage).
+// Saved projects always go to the Sheet when one is connected.
+const SOURCE_KEY = 'pmEffort.source';
+let source = IS_GAS && lsGet(SOURCE_KEY) !== 'csv' ? 'sheet' : 'csv';
+
+const configStores = {
+  sheet: {
+    load: () => gasCall('getConfig'),
+    save: c => gasCall('saveConfig', c)
+  },
+  csv: {
+    load: async () => lsGet(CONFIG_KEY),
+    save: async c => lsSet(CONFIG_KEY, c)
+  }
+};
+
 const store = IS_GAS ? {
-  loadConfig: () => gasCall('getConfig'),
-  saveConfig: c => gasCall('saveConfig', c),
   saveProject: p => gasCall('saveProject', p),
   listProjects: () => gasCall('getSavedProjects')
 } : {
-  loadConfig: async () => lsGet(CONFIG_KEY),
-  saveConfig: async c => lsSet(CONFIG_KEY, c),
   saveProject: async p => lsSet(PROJECTS_KEY, (lsGet(PROJECTS_KEY) || []).concat([p])),
   listProjects: async () => lsGet(PROJECTS_KEY) || []
 };
+store.loadConfig = () => configStores[source].load();
+store.saveConfig = c => configStores[source].save(c);
 
 // ---------- Application Logic ----------
 let config = null;
@@ -558,7 +620,13 @@ function normalize(c) {
   return c;
 }
 
-async function init() {
+function sourceStatus() {
+  if (source === 'sheet') return 'Synced with Google Sheet';
+  return IS_GAS ? 'Using uploaded CSV (stored in this browser)' : 'Working locally (Browser storage)';
+}
+
+async function loadConfig() {
+  setStatus('Loading...');
   try {
     let c = await store.loadConfig();
     if (!c || !c.activities || !c.activities.length) {
@@ -567,13 +635,18 @@ async function init() {
     }
     config = normalize(c);
     selected = config.activities.map(a => a.id);
-    if (IS_GAS) document.getElementById('jsonTools').style.display = 'none';
-    setStatus(IS_GAS ? 'Synced with Google Sheet' : 'Working locally (Browser storage)');
+    setStatus(sourceStatus());
     renderAll();
-    renderSaved();
   } catch (e) {
     setStatus('Error loading data: ' + e);
   }
+  renderSourcePanel();
+}
+
+async function init() {
+  if (IS_GAS) document.getElementById('jsonTools').style.display = 'none';
+  await loadConfig();
+  renderSaved();
 }
 
 function currentProject() {
@@ -654,7 +727,7 @@ function renderAdmin() {
       <td><input type="text" aria-label="Activity Description" value="${esc(a.description || '')}" onchange="editActivity(${i}, 'description', this.value)" placeholder="Activity description"></td>
       <td><input type="number" aria-label="Activity Hours" step="0.5" value="${esc(a.hours)}" onchange="editActivity(${i}, 'hours', Number(this.value))"></td>
       <td><select aria-label="Activity Unit" onchange="editActivity(${i}, 'unit', this.value)">
-        ${['week', 'month', 'year', 'each'].map(u => `<option ${a.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
+        ${UNITS.map(u => `<option ${a.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
       </select></td>
       <td><input type="number" aria-label="Times Per Year" value="${esc(a.timesPerYear)}" onchange="editActivity(${i}, 'timesPerYear', this.value)"></td>
       <td><button class="btn-secondary" style="padding: 6px 12px; font-size: 0.85em;" onclick="removeActivity(${i})">Delete</button></td>
@@ -813,6 +886,154 @@ function importConfig(input) {
     } catch (e) { alert('Could not import config: ' + e.message); }
     input.value = '';
   });
+}
+
+// ---------- Input Source & CSV ----------
+// One CSV holds both activities and settings, distinguished by the "type" column.
+// Setting rows use "id" for the setting key and "value" for its value.
+const CSV_HEADERS = ['type', 'id', 'name', 'description', 'hours', 'unit', 'timesPerYear', 'value'];
+
+function toggleInputPanel() {
+  const panel = document.getElementById('inputPanel');
+  panel.hidden = !panel.hidden;
+  document.getElementById('btnInput').setAttribute('aria-expanded', String(!panel.hidden));
+}
+
+function renderSourcePanel() {
+  document.querySelectorAll('input[name=source]').forEach(r => {
+    r.checked = r.value === source;
+    if (r.value === 'sheet') r.disabled = !IS_GAS;
+  });
+  document.getElementById('sheetNote').textContent = IS_GAS ? '' : '(not available - open the calculator from Google Sheets)';
+  document.getElementById('btnInput').textContent = 'Input: ' + (source === 'sheet' ? 'Google Sheet' : 'CSV');
+}
+
+async function setSource(next) {
+  if (next === source || (next === 'sheet' && !IS_GAS)) return;
+  if (next === 'csv' && !lsGet(CONFIG_KEY)) {
+    // Nothing uploaded yet: ask for a file; uploadCsv() switches the source on success.
+    renderSourcePanel();
+    document.getElementById('csvFile').click();
+    return;
+  }
+  source = next;
+  try { localStorage.setItem(SOURCE_KEY, JSON.stringify(next)); } catch (e) { /* remembered for this session only */ }
+  await loadConfig();
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [], field = '', quoted = false;
+  text = text.replace(/^﻿/, '');
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch !== '"') field += ch;
+      else if (text[i + 1] === '"') { field += '"'; i++; }
+      else quoted = false;
+    } else if (ch === '"') {
+      quoted = true;
+    } else if (ch === ',') {
+      row.push(field); field = '';
+    } else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); rows.push(row);
+      row = []; field = '';
+    } else {
+      field += ch;
+    }
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(f => f.trim() !== ''));
+}
+
+function toCsv(rows) {
+  return rows.map(r => r.map(v => {
+    const s = String(v ?? '');
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(',')).join('\r\n');
+}
+
+function configToCsv(c) {
+  return toCsv([CSV_HEADERS]
+    .concat(c.activities.map(a => ['activity', a.id, a.name, a.description, a.hours, a.unit, a.timesPerYear, '']))
+    .concat(Object.keys(c.settings).map(k => ['setting', k, '', '', '', '', '', c.settings[k]])));
+}
+
+function csvToConfig(text) {
+  const rows = parseCsv(text);
+  if (!rows.length) throw new Error('The file is empty.');
+  const head = rows[0].map(h => h.trim().toLowerCase());
+  if (!head.includes('name')) throw new Error('Missing a "name" header column.');
+  const get = (r, col) => {
+    const i = head.indexOf(col.toLowerCase());
+    return i < 0 ? '' : String(r[i] ?? '').trim();
+  };
+  const isNum = v => v !== '' && !isNaN(Number(v));
+
+  const activities = [];
+  const settings = {};
+  rows.slice(1).forEach((r, n) => {
+    const line = 'Row ' + (n + 2) + ': ';
+    const type = get(r, 'type').toLowerCase() || 'activity';
+    if (type === 'setting') {
+      const key = get(r, 'id');
+      if (!(key in DEFAULT_CONFIG.settings)) throw new Error(line + `unknown setting "${key}".`);
+      if (!isNum(get(r, 'value'))) throw new Error(line + `setting "${key}" needs a numeric value.`);
+      settings[key] = Number(get(r, 'value'));
+    } else if (type === 'activity') {
+      const name = get(r, 'name');
+      const unit = (get(r, 'unit') || 'year').toLowerCase();
+      const times = get(r, 'timesPerYear');
+      if (!name) throw new Error(line + 'activity is missing a name.');
+      if (!isNum(get(r, 'hours'))) throw new Error(line + `"${name}" needs numeric hours.`);
+      if (!UNITS.includes(unit)) throw new Error(line + `unit must be one of ${UNITS.join(', ')}.`);
+      if (unit === 'each' && !(Number(times) > 0)) throw new Error(line + `"${name}" uses unit "each" and needs timesPerYear.`);
+      activities.push({
+        id: get(r, 'id') || 'row' + (n + 2),
+        name,
+        description: get(r, 'description'),
+        hours: Number(get(r, 'hours')),
+        unit,
+        timesPerYear: isNum(times) ? Number(times) : ''
+      });
+    } else {
+      throw new Error(line + `type must be "activity" or "setting", not "${type}".`);
+    }
+  });
+
+  if (!activities.length) throw new Error('No activity rows found.');
+  const dup = activities.find((a, i) => activities.findIndex(b => b.id === a.id) !== i);
+  if (dup) throw new Error(`Duplicate activity id "${dup.id}".`);
+  // Settings left out of the CSV keep their current values.
+  return { activities, settings: { ...(config ? config.settings : DEFAULT_CONFIG.settings), ...settings } };
+}
+
+function uploadCsv(input) {
+  const file = input.files[0];
+  if (!file) return;
+  file.text().then(async text => {
+    try {
+      const c = normalize(csvToConfig(text));
+      source = 'csv';
+      try { localStorage.setItem(SOURCE_KEY, JSON.stringify('csv')); } catch (e) { /* session only */ }
+      await store.saveConfig(c);
+      config = c;
+      selected = config.activities.map(a => a.id);
+      renderAll();
+      renderSourcePanel();
+      setStatus(`Loaded ${config.activities.length} activities from ${file.name}. ` + sourceStatus());
+    } catch (e) { alert('Could not import CSV: ' + e.message); }
+    input.value = '';
+  });
+}
+
+function downloadCsv() {
+  const blob = new Blob([configToCsv(config)], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pm-effort-admin.csv';
+  a.click();
 }
 
 ['projName', 'projBudget', 'projSubawards'].forEach(id =>

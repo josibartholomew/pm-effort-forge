@@ -111,7 +111,7 @@ function getSavedProjects() {
   if (data.length <= 1) return [];
 
   return data.slice(1).map((r, i) => ({
-    id: i,
+    id: i, // Corresponds to row index (i + 2) in sheet
     savedAt: r[0] instanceof Date ? r[0].toLocaleString() : String(r[0]),
     name: String(r[1] || 'Untitled'),
     budget: Number(r[2]) || 0,
@@ -123,4 +123,17 @@ function getSavedProjects() {
     ftePercent: (Number(r[8]) || 0) * 100,
     studentHoursPerWeek: Number(r[9]) || 0
   })).reverse(); // Return latest saved projects first
+}
+
+function deleteSavedProject(id) {
+  const ss = getSpreadsheet_();
+  const sheet = ss.getSheetByName('Projects');
+  if (!sheet) return false;
+
+  const rowIndex = Number(id) + 2; // Row 1 is header, so row index = id + 2
+  if (rowIndex >= 2 && rowIndex <= sheet.getLastRow()) {
+    sheet.deleteRow(rowIndex);
+    return true;
+  }
+  return false;
 }

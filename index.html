@@ -902,8 +902,8 @@ async function renderSaved() {
           <td>${totalHrs.toFixed(1)}</td>
           <td>${ftePct.toFixed(1)}%</td>
           <td style="text-align: center; white-space: nowrap;">
-            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8em; margin-right: 4px;" onclick="loadProject('${esc(p.name).replace(/'/g, "\\'")}', ${budgetVal}, ${p.subawards})">Load</button>
-            <button class="btn-danger" style="padding: 4px 10px; font-size: 0.8em;" onclick="deleteProject(${id}, '${esc(p.name).replace(/'/g, "\\'")}')">Delete</button>
+            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8em; margin-right: 4px;" onclick="loadProject(${esc(JSON.stringify(p.name))}, ${budgetVal}, ${p.subawards})">Load</button>
+            <button class="btn-danger" style="padding: 4px 10px; font-size: 0.8em;" onclick="deleteProject(${id}, ${esc(JSON.stringify(p.name))})">Delete</button>
           </td>
         </tr>`;
       }).join('') + '</table></div>';

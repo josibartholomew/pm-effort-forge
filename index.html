@@ -230,6 +230,14 @@
     background-color: var(--black);
   }
 
+  .btn-danger {
+    background-color: var(--primary-red);
+  }
+
+  .btn-danger:hover {
+    background-color: var(--dark-red);
+  }
+
   .button-group {
     margin-top: 16px;
     display: flex;
@@ -281,11 +289,54 @@
     margin-left: 6px;
   }
 
+  /* Tooltip Badge Styles */
   .tooltip-icon {
-    cursor: help;
-    text-decoration: underline dotted;
-    margin-left: 4px;
-    font-size: 0.85em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: var(--dark-gray);
+    color: var(--white);
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 6px;
+    border: none;
+    padding: 0;
+    line-height: 1;
+    vertical-align: middle;
+    transition: background-color 0.2s, transform 0.1s;
+  }
+
+  .tooltip-icon:hover, .tooltip-icon:focus {
+    background-color: var(--primary-red);
+    outline: none;
+  }
+
+  /* Viewport-fixed Tooltip Popup */
+  #global-tooltip {
+    position: fixed;
+    background-color: var(--black);
+    color: var(--white);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: normal;
+    max-width: 250px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease-in-out, visibility 0.15s ease-in-out;
+    line-height: 1.35;
+  }
+
+  #global-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
   }
 
   /* PRINT / PDF STYLES */
@@ -309,7 +360,8 @@
     .header-actions,
     #status,
     .tab-content:not(.active),
-    .tooltip-icon {
+    .tooltip-icon,
+    #global-tooltip {
       display: none !important;
     }
 
@@ -471,6 +523,75 @@
 </div>
 
 <script>
+// ---------- Tooltip Engine ----------
+function initTooltips() {
+  let tipEl = document.getElementById('global-tooltip');
+  if (!tipEl) {
+    tipEl = document.createElement('div');
+    tipEl.id = 'global-tooltip';
+    document.body.appendChild(tipEl);
+  }
+
+  document.addEventListener('mouseover', e => {
+    const icon = e.target.closest('.tooltip-icon');
+    if (icon && icon.dataset.tooltip) showTooltip(icon, icon.dataset.tooltip);
+  });
+
+  document.addEventListener('mouseout', e => {
+    if (e.target.closest('.tooltip-icon')) hideTooltip();
+  });
+
+  document.addEventListener('focusin', e => {
+    const icon = e.target.closest('.tooltip-icon');
+    if (icon && icon.dataset.tooltip) showTooltip(icon, icon.dataset.tooltip);
+  });
+
+  document.addEventListener('focusout', e => {
+    if (e.target.closest('.tooltip-icon')) hideTooltip();
+  });
+
+  document.addEventListener('click', e => {
+    const icon = e.target.closest('.tooltip-icon');
+    if (icon && icon.dataset.tooltip) {
+      e.stopPropagation();
+      if (tipEl.classList.contains('visible') && tipEl.dataset.owner === icon.dataset.tooltip) {
+        hideTooltip();
+      } else {
+        showTooltip(icon, icon.dataset.tooltip);
+      }
+    } else {
+      hideTooltip();
+    }
+  });
+}
+
+function showTooltip(elem, text) {
+  const tipEl = document.getElementById('global-tooltip');
+  if (!tipEl) return;
+  tipEl.textContent = text;
+  tipEl.dataset.owner = text;
+  
+  const rect = elem.getBoundingClientRect();
+  tipEl.classList.add('visible');
+
+  let top = rect.top - tipEl.offsetHeight - 8;
+  let left = rect.left + (rect.width / 2) - (tipEl.offsetWidth / 2);
+
+  if (top < 10) top = rect.bottom + 8; // move below icon if offscreen top
+  if (left < 10) left = 10;
+  if (left + tipEl.offsetWidth > window.innerWidth - 10) {
+    left = window.innerWidth - tipEl.offsetWidth - 10;
+  }
+
+  tipEl.style.top = top + 'px';
+  tipEl.style.left = left + 'px';
+}
+
+function hideTooltip() {
+  const tipEl = document.getElementById('global-tooltip');
+  if (tipEl) tipEl.classList.remove('visible');
+}
+
 // ---------- Tab Navigation Helper ----------
 function switchTab(tabId, btn) {
   document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
@@ -482,6 +603,12 @@ function switchTab(tabId, btn) {
   btn.classList.add('active');
   btn.setAttribute('aria-selected', 'true');
   if (tabId === 'tab-saved') renderSaved();
+}
+
+function toggleInputPanel() {
+  const panel = document.getElementById('inputPanel');
+  panel.hidden = !panel.hidden;
+  document.getElementById('btnInput').setAttribute('aria-expanded', String(!panel.hidden));
 }
 
 // ---------- Defaults ----------
@@ -563,8 +690,6 @@ function lsSet(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { alert('Could not save in this browser: ' + e); }
 }
 
-// Admin config source: 'sheet' (connected Google Sheet) or 'csv' (uploaded CSV / browser storage).
-// Saved projects always go to the Sheet when one is connected.
 const SOURCE_KEY = 'pmEffort.source';
 let source = IS_GAS && lsGet(SOURCE_KEY) !== 'csv' ? 'sheet' : 'csv';
 
@@ -581,10 +706,16 @@ const configStores = {
 
 const store = IS_GAS ? {
   saveProject: p => gasCall('saveProject', p),
-  listProjects: () => gasCall('getSavedProjects')
+  listProjects: () => gasCall('getSavedProjects'),
+  deleteProject: id => gasCall('deleteSavedProject', id)
 } : {
   saveProject: async p => lsSet(PROJECTS_KEY, (lsGet(PROJECTS_KEY) || []).concat([p])),
-  listProjects: async () => lsGet(PROJECTS_KEY) || []
+  listProjects: async () => lsGet(PROJECTS_KEY) || [],
+  deleteProject: async targetId => {
+    let list = lsGet(PROJECTS_KEY) || [];
+    list = list.filter((p, idx) => (p.id !== undefined ? p.id : idx) !== targetId);
+    lsSet(PROJECTS_KEY, list);
+  }
 };
 store.loadConfig = () => configStores[source].load();
 store.saveConfig = c => configStores[source].save(c);
@@ -644,6 +775,7 @@ async function loadConfig() {
 }
 
 async function init() {
+  initTooltips();
   if (IS_GAS) document.getElementById('jsonTools').style.display = 'none';
   await loadConfig();
   renderSaved();
@@ -685,14 +817,14 @@ function renderResults() {
     <tr>
       <td style="width: 70%;">
         <b>Base hours/yr</b>
-        <span title="Total calculated hours before applying complexity multipliers" class="tooltip-icon">ⓘ</span>
+        <button type="button" class="tooltip-icon" data-tooltip="Total calculated hours before applying complexity multipliers" aria-label="Base hours info">ⓘ</button>
       </td>
       <td>${r.baseHours.toFixed(1)}</td>
     </tr>
     <tr>
       <td>
         <b>Complexity multiplier</b>
-        <span title="Multiplier derived from subawards and project budget" class="tooltip-icon">ⓘ</span>
+        <button type="button" class="tooltip-icon" data-tooltip="Multiplier derived from subawards and project budget" aria-label="Complexity multiplier info">ⓘ</button>
       </td>
       <td>${r.multiplier.toFixed(2)}x</td>
     </tr>
@@ -703,7 +835,7 @@ function renderResults() {
     <tr>
       <td>
         <b>FTE %</b> 
-        <span title="Full-Time Equivalent percentage based on ${config.settings.fullTimeHours} annual standard hours" class="tooltip-icon">ⓘ</span>
+        <button type="button" class="tooltip-icon" data-tooltip="Full-Time Equivalent percentage based on ${config.settings.fullTimeHours} annual standard hours" aria-label="FTE percentage info">ⓘ</button>
         <span style="color:#666; font-size:0.85em; font-weight:normal;">(${config.settings.fullTimeHours} hrs/yr)</span>
       </td>
       <td><b>${r.ftePercent.toFixed(1)}%</b></td>
@@ -711,7 +843,7 @@ function renderResults() {
     <tr>
       <td>
         <b>Hours/wk</b> 
-        <span title="Weekly hours required for student worker based on ${config.settings.studentWeeksPerYear} active weeks" class="tooltip-icon">ⓘ</span>
+        <button type="button" class="tooltip-icon" data-tooltip="Weekly hours required for student worker based on ${config.settings.studentWeeksPerYear} active weeks" aria-label="Student weekly hours info">ⓘ</button>
         <span style="color:#666; font-size:0.85em; font-weight:normal;">(student, ${config.settings.studentWeeksPerYear} wks)</span>
       </td>
       <td><b>${r.studentHoursPerWeek.toFixed(1)}</b></td>
@@ -756,16 +888,25 @@ async function renderSaved() {
       return;
     }
 
-    el.innerHTML = '<div class="table-wrapper"><table><tr><th>Saved At</th><th>Project Name</th><th>Budget</th><th>Subawards</th><th>Total Hrs</th><th>FTE %</th><th>Actions</th></tr>' +
-      list.map(p => `<tr>
-        <td>${esc(p.savedAt)}</td>
-        <td><strong>${esc(p.name)}</strong></td>
-        <td>$${Number(p.budget).toLocaleString()}</td>
-        <td>${esc(p.subawards)}</td>
-        <td>${(p.totalHours || p.results?.totalHours || 0).toFixed(1)}</td>
-        <td>${(p.ftePercent || p.results?.ftePercent || 0).toFixed(1)}%</td>
-        <td><button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8em;" onclick="loadProject('${esc(p.name)}', ${p.budget}, ${p.subawards})">Load</button></td>
-      </tr>`).join('') + '</table></div>';
+    el.innerHTML = '<div class="table-wrapper"><table><tr><th>Saved At</th><th>Project Name</th><th>Budget</th><th>Subawards</th><th>Total Hrs</th><th>FTE %</th><th style="text-align: center;">Actions</th></tr>' +
+      list.map((p, idx) => {
+        const id = p.id !== undefined ? p.id : idx;
+        const budgetVal = Number(p.budget) || 0;
+        const totalHrs = p.totalHours || p.results?.totalHours || 0;
+        const ftePct = p.ftePercent || p.results?.ftePercent || 0;
+        return `<tr>
+          <td>${esc(p.savedAt)}</td>
+          <td><strong>${esc(p.name)}</strong></td>
+          <td>$${budgetVal.toLocaleString()}</td>
+          <td>${esc(p.subawards)}</td>
+          <td>${totalHrs.toFixed(1)}</td>
+          <td>${ftePct.toFixed(1)}%</td>
+          <td style="text-align: center; white-space: nowrap;">
+            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8em; margin-right: 4px;" onclick="loadProject('${esc(p.name).replace(/'/g, "\\'")}', ${budgetVal}, ${p.subawards})">Load</button>
+            <button class="btn-danger" style="padding: 4px 10px; font-size: 0.8em;" onclick="deleteProject(${id}, '${esc(p.name).replace(/'/g, "\\'")}')">Delete</button>
+          </td>
+        </tr>`;
+      }).join('') + '</table></div>';
   } catch (e) {
     el.innerHTML = '<p style="color: var(--dark-red);">Error loading saved projects: ' + esc(e.message || e) + '</p>';
   }
@@ -778,6 +919,22 @@ function loadProject(name, budget, subawards) {
   switchTab('tab-calculator', document.getElementById('btn-tab-calculator'));
   renderResults();
   setStatus(`Loaded project "${name}".`);
+}
+
+async function deleteProject(id, projName) {
+  const confirmMsg = projName 
+    ? `Are you sure you want to delete "${projName}"?` 
+    : 'Are you sure you want to delete this saved project?';
+  if (!confirm(confirmMsg)) return;
+
+  setStatus('Deleting project...');
+  try {
+    await store.deleteProject(id);
+    setStatus('Project deleted.');
+    await renderSaved();
+  } catch (e) {
+    setStatus('Error deleting project: ' + e);
+  }
 }
 
 // ---------- Actions ----------
@@ -889,15 +1046,7 @@ function importConfig(input) {
 }
 
 // ---------- Input Source & CSV ----------
-// One CSV holds both activities and settings, distinguished by the "type" column.
-// Setting rows use "id" for the setting key and "value" for its value.
 const CSV_HEADERS = ['type', 'id', 'name', 'description', 'hours', 'unit', 'timesPerYear', 'value'];
-
-function toggleInputPanel() {
-  const panel = document.getElementById('inputPanel');
-  panel.hidden = !panel.hidden;
-  document.getElementById('btnInput').setAttribute('aria-expanded', String(!panel.hidden));
-}
 
 function renderSourcePanel() {
   document.querySelectorAll('input[name=source]').forEach(r => {
@@ -911,20 +1060,19 @@ function renderSourcePanel() {
 async function setSource(next) {
   if (next === source || (next === 'sheet' && !IS_GAS)) return;
   if (next === 'csv' && !lsGet(CONFIG_KEY)) {
-    // Nothing uploaded yet: ask for a file; uploadCsv() switches the source on success.
     renderSourcePanel();
     document.getElementById('csvFile').click();
     return;
   }
   source = next;
-  try { localStorage.setItem(SOURCE_KEY, JSON.stringify(next)); } catch (e) { /* remembered for this session only */ }
+  try { localStorage.setItem(SOURCE_KEY, JSON.stringify(next)); } catch (e) { /* session only */ }
   await loadConfig();
 }
 
 function parseCsv(text) {
   const rows = [];
   let row = [], field = '', quoted = false;
-  text = text.replace(/^﻿/, '');
+  text = text.replace(/^\uFEFF/, '');
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (quoted) {
@@ -1005,7 +1153,6 @@ function csvToConfig(text) {
   if (!activities.length) throw new Error('No activity rows found.');
   const dup = activities.find((a, i) => activities.findIndex(b => b.id === a.id) !== i);
   if (dup) throw new Error(`Duplicate activity id "${dup.id}".`);
-  // Settings left out of the CSV keep their current values.
   return { activities, settings: { ...(config ? config.settings : DEFAULT_CONFIG.settings), ...settings } };
 }
 
@@ -1036,8 +1183,10 @@ function downloadCsv() {
   a.click();
 }
 
-['projName', 'projBudget', 'projSubawards'].forEach(id =>
-  document.getElementById(id).addEventListener('input', renderResults));
+['projName', 'projBudget', 'projSubawards'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', renderResults);
+});
 
 init();
 </script>

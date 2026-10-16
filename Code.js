@@ -1,11 +1,28 @@
 // PM Effort Calculator: Serves index.html and synchronizes project data with Google Sheets.
-// Tabs created/managed: 'Activities' (catalog), 'Settings' (key/value), 'Projects' (saved projects log).
+
+// Hardcoded Admin Password (change 'admin123' to your preferred password)
+const ADMIN_PASSWORD = 'admin123';
 
 const ACTIVITY_HEADERS = ['id', 'name', 'description', 'hours', 'unit', 'timesPerYear'];
 const PROJECT_HEADERS = [
   'Saved', 'Project', 'Budget', 'Subawards', 'Activities',
   'Base hrs/yr', 'Multiplier', 'Total hrs/yr', 'FTE %', 'Student hrs/wk'
 ];
+
+/**
+ * Server-side password verification (runs strictly on Google servers)
+ */
+function verifyAdminPassword(pwd) {
+  return pwd === ADMIN_PASSWORD;
+}
+
+function parseNum_(val) {
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (!val) return 0;
+  const str = String(val).replace(/[$,%\s]/g, '');
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+}
 
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('PM Effort')
@@ -20,14 +37,12 @@ function showCalculator() {
   SpreadsheetApp.getUi().showModalDialog(html, 'PM Effort Calculator');
 }
 
-// Also usable as a web app (Deploy > New deployment > Web app).
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('PM Effort Calculator')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// Bound script: the Sheet it's attached to. Standalone: set script property SPREADSHEET_ID.
 function getSpreadsheet_() {
   const active = SpreadsheetApp.getActiveSpreadsheet();
   if (active) return active;
@@ -40,7 +55,7 @@ function getConfig() {
   const ss = getSpreadsheet_();
   const actSheet = ss.getSheetByName('Activities');
   const setSheet = ss.getSheetByName('Settings');
-  if (!actSheet || !setSheet) return null; // index.html will seed defaults
+  if (!actSheet || !setSheet) return null;
 
   const activities = actSheet.getDataRange().getValues().slice(1)
     .filter(r => r[1] !== '')
@@ -48,15 +63,15 @@ function getConfig() {
       id: String(r[0] || 'row' + (i + 2)),
       name: String(r[1]),
       description: String(r[2] || ''),
-      hours: Number(r[3]) || 0,
+      hours: parseNum_(r[3]),
       unit: String(r[4] || 'year').toLowerCase(),
-      timesPerYear: r[5]
+      timesPerYear: (r[5] !== '' && r[5] !== undefined) ? parseNum_(r[5]) : ''
     }));
 
   const settings = {};
   setSheet.getDataRange().getValues().slice(1)
     .filter(r => r[0] !== '')
-    .forEach(r => { settings[r[0]] = r[1]; });
+    .forEach(r => { settings[r[0]] = parseNum_(r[1]); });
 
   return { activities, settings };
 }
@@ -88,19 +103,43 @@ function saveProject(p) {
     sheet.setFrozenRows(1);
     sheet.getRange(1, 1, 1, PROJECT_HEADERS.length).setFontWeight('bold').setBackground('#DB0000').setFontColor('#FFFFFF');
   }
-  const r = p.results;
+
+  const r = p.results || {};
+
+  let actStr = '';
+  if (Array.isArray(p.selectedNames) && p.selectedNames.length > 0) {
+    actStr = p.selectedNames.join(', ');
+  } else if (Array.isArray(p.activities) && p.activities.length > 0) {
+    actStr = p.activities.join(', ');
+  } else if (Array.isArray(p.selectedIds) && p.selectedIds.length > 0) {
+    actStr = p.selectedIds.join(', ');
+  } else if (typeof p.activitiesText === 'string') {
+    actStr = p.activitiesText;
+  }
+
+  const name = String(p.name || 'Untitled').trim();
+  const budget = parseNum_(p.budget);
+  const subawards = parseNum_(p.subawards);
+  const baseHours = parseNum_(r.baseHours);
+  const multiplier = parseNum_(r.multiplier) || 1;
+  const totalHours = parseNum_(r.totalHours);
+  const ftePercent = parseNum_(r.ftePercent);
+  const fteDecimal = ftePercent > 1 ? ftePercent / 100 : ftePercent;
+  const studentHours = parseNum_(r.studentHoursPerWeek);
+
   sheet.appendRow([
-    new Date(), p.name, p.budget, p.subawards, p.selectedNames.join(', '),
-    r.baseHours, r.multiplier, r.totalHours, r.ftePercent / 100, r.studentHoursPerWeek
+    new Date(), name, budget, subawards, actStr,
+    baseHours, multiplier, totalHours, fteDecimal, studentHours
   ]);
 
-  // Format row cells for clean visual display in Google Sheets
   const lastRow = sheet.getLastRow();
   sheet.getRange(lastRow, 1).setNumberFormat('yyyy-mm-dd hh:mm');
   sheet.getRange(lastRow, 3).setNumberFormat('$#,##0');
   sheet.getRange(lastRow, 6, 1, 3).setNumberFormat('0.0');
   sheet.getRange(lastRow, 9).setNumberFormat('0.0%');
   sheet.getRange(lastRow, 10).setNumberFormat('0.0');
+
+  return true;
 }
 
 function getSavedProjects() {
@@ -110,19 +149,57 @@ function getSavedProjects() {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
 
-  return data.slice(1).map((r, i) => ({
-    id: i, // Corresponds to row index (i + 2) in sheet
-    savedAt: r[0] instanceof Date ? r[0].toLocaleString() : String(r[0]),
-    name: String(r[1] || 'Untitled'),
-    budget: Number(r[2]) || 0,
-    subawards: Number(r[3]) || 0,
-    activitiesText: String(r[4] || ''),
-    baseHours: Number(r[5]) || 0,
-    multiplier: Number(r[6]) || 1,
-    totalHours: Number(r[7]) || 0,
-    ftePercent: (Number(r[8]) || 0) * 100,
-    studentHoursPerWeek: Number(r[9]) || 0
-  })).reverse(); // Return latest saved projects first
+  const nameToIdMap = {};
+  const actSheet = ss.getSheetByName('Activities');
+  if (actSheet) {
+    const actData = actSheet.getDataRange().getValues().slice(1);
+    actData.forEach(r => {
+      const actId = String(r[0] || '').trim();
+      const actName = String(r[1] || '').trim();
+      if (actName) {
+        if (actId) nameToIdMap[actName.toLowerCase()] = actId;
+      }
+    });
+  }
+
+  const projects = data.slice(1).map((r, i) => {
+    const rawActText = String(r[4] || '').trim();
+
+    const namesArray = rawActText
+      ? rawActText.split(',').map(s => s.trim()).filter(s => s.length > 0)
+      : [];
+
+    const idsArray = namesArray.map(item => {
+      const lower = item.toLowerCase();
+      return nameToIdMap[lower] || item;
+    });
+
+    let fte = parseNum_(r[8]);
+    if (fte > 0 && fte <= 1) {
+      fte = fte * 100;
+    }
+
+    return {
+      id: i,
+      rowIndex: i + 2,
+      savedAt: r[0] instanceof Date ? r[0].toLocaleString() : String(r[0] || ''),
+      name: String(r[1] || 'Untitled'),
+      budget: parseNum_(r[2]),
+      subawards: parseNum_(r[3]),
+      activitiesText: rawActText,
+      selectedNames: namesArray,
+      activities: namesArray,
+      selectedIds: idsArray,
+      selectedActivities: namesArray,
+      baseHours: parseNum_(r[5]),
+      multiplier: parseNum_(r[6]) || 1,
+      totalHours: parseNum_(r[7]),
+      ftePercent: fte,
+      studentHoursPerWeek: parseNum_(r[9])
+    };
+  });
+
+  return projects.reverse();
 }
 
 function deleteSavedProject(id) {
@@ -130,9 +207,27 @@ function deleteSavedProject(id) {
   const sheet = ss.getSheetByName('Projects');
   if (!sheet) return false;
 
-  const rowIndex = Number(id) + 2; // Row 1 is header, so row index = id + 2
-  if (rowIndex >= 2 && rowIndex <= sheet.getLastRow()) {
-    sheet.deleteRow(rowIndex);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return false;
+
+  const targetId = Number(id);
+  if (isNaN(targetId)) return false;
+
+  const projects = getSavedProjects();
+  const match = projects.find(p => p.id === targetId || p.rowIndex === targetId);
+
+  let rowToDelete = -1;
+  if (match) {
+    rowToDelete = match.rowIndex;
+  } else {
+    const calcRow = targetId + 2;
+    if (calcRow >= 2 && calcRow <= lastRow) {
+      rowToDelete = calcRow;
+    }
+  }
+
+  if (rowToDelete >= 2 && rowToDelete <= lastRow) {
+    sheet.deleteRow(rowToDelete);
     return true;
   }
   return false;

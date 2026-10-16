@@ -857,10 +857,12 @@ function loadProject(id) {
     return;
   }
 
+  // Populate project input fields
   document.getElementById('projName').value = p.name || '';
   document.getElementById('projBudget').value = p.budget || 0;
   document.getElementById('projSubawards').value = p.subawards || 0;
 
+  // Gather selected activities
   const rawList = [];
   if (Array.isArray(p.selected)) rawList.push(...p.selected);
   if (Array.isArray(p.selectedIds)) rawList.push(...p.selectedIds);
@@ -875,6 +877,7 @@ function loadProject(id) {
   const normalizedRawList = rawList.map(item => String(item).trim().toLowerCase());
   const rawText = String(p.activitiesText || '').toLowerCase();
 
+  // Match against config.activities catalog
   selected = config.activities
     .filter(act => {
       const actId = String(act.id || '').trim().toLowerCase();
@@ -885,6 +888,23 @@ function loadProject(id) {
     })
     .map(act => act.id);
 
+  renderUser();
+  renderResults();
+  
+  const calcBtn = document.getElementById('btn-tab-calculator');
+  if (calcBtn) switchTab('tab-calculator', calcBtn);
+
+  setStatus('Loaded project "' + (p.name || 'Untitled') + '".');
+}
+
+function resetProjectForm() {
+  document.getElementById('projName').value = 'Test project';
+  document.getElementById('projBudget').value = 250000;
+  document.getElementById('projSubawards').value = 1;
+  selected = config.activities.map(a => a.id);
+  renderUser();
+  renderResults();
+  // Update UI & switch tab
   renderUser();
   renderResults();
   

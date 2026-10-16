@@ -165,6 +165,11 @@ function getSavedProjects() {
   const projects = data.slice(1).map((r, i) => {
     const rawActText = String(r[4] || '').trim();
 
+  // Row 1 is headers. Data starts at Row 2
+  const projects = data.slice(1).map((r, i) => {
+    const rawActText = String(r[4] || '').trim();
+
+    // Parse comma-separated activity items
     const namesArray = rawActText
       ? rawActText.split(',').map(s => s.trim()).filter(s => s.length > 0)
       : [];
@@ -182,6 +187,8 @@ function getSavedProjects() {
     return {
       id: i,
       rowIndex: i + 2,
+      id: i,                          // Original 0-based data index
+      rowIndex: i + 2,                // Actual row number in Google Sheet
       savedAt: r[0] instanceof Date ? r[0].toLocaleString() : String(r[0] || ''),
       name: String(r[1] || 'Untitled'),
       budget: parseNum_(r[2]),
@@ -191,6 +198,10 @@ function getSavedProjects() {
       activities: namesArray,
       selectedIds: idsArray,
       selectedActivities: namesArray,
+      selectedNames: namesArray,      // Array of Activity Names
+      activities: namesArray,         // Alias array
+      selectedIds: idsArray,          // Array of Activity IDs
+      selectedActivities: namesArray, // Alias array
       baseHours: parseNum_(r[5]),
       multiplier: parseNum_(r[6]) || 1,
       totalHours: parseNum_(r[7]),

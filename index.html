@@ -270,6 +270,303 @@
   }
 
   #global-tooltip.visible { opacity: 1; visibility: visible; }
+
+  /* PRINT / PDF REPORT */
+  /* The PDF is a dedicated report (#printReport) built by renderPrintReport(),
+     not a printout of the calculator screen. */
+  #printReport { display: none; }
+
+  @media print {
+    @page {
+      size: letter;
+      margin: 0.55in 0.6in 0.7in;
+      @bottom-left {
+        content: "PM Effort Calculator \00B7  Southern Utah University";
+        font: 8pt 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        color: #777777;
+      }
+      @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font: 8pt 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        color: #777777;
+      }
+    }
+
+    body {
+      background: #ffffff !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    .container,
+    #global-tooltip {
+      display: none !important;
+    }
+
+    #printReport { display: block; }
+  }
+
+  #printReport {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 9.5pt;
+    line-height: 1.4;
+    color: #1a1a1a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #printReport h2 {
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--primary-red);
+    border: none;
+    margin: 0 0 8px 0;
+    padding: 0;
+  }
+
+  .pr-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-bottom: 14px;
+    border-bottom: 3px solid var(--primary-red);
+  }
+
+  .pr-header img {
+    height: 46px;
+    width: auto;
+    padding-right: 18px;
+    border-right: 1px solid #dddddd;
+  }
+
+  .pr-title { flex: 1; min-width: 0; }
+
+  .pr-eyebrow {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: #666666;
+  }
+
+  .pr-title h1 {
+    margin: 2px 0 0 0;
+    font-size: 19pt;
+    line-height: 1.15;
+    color: #000000;
+    overflow-wrap: anywhere;
+  }
+
+  .pr-meta {
+    text-align: right;
+    font-size: 8pt;
+    color: #666666;
+    white-space: nowrap;
+  }
+
+  .pr-meta b {
+    display: block;
+    font-size: 9.5pt;
+    color: #1a1a1a;
+  }
+
+  .pr-kpis {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 1fr;
+    gap: 10px;
+    margin: 18px 0;
+  }
+
+  .pr-kpi {
+    border: 1px solid #e2e2e2;
+    border-radius: 6px;
+    padding: 11px 14px;
+    background: #fafafa;
+  }
+
+  .pr-kpi-main {
+    background: var(--primary-red);
+    border-color: var(--primary-red);
+    color: #ffffff;
+  }
+
+  .pr-kpi-label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #666666;
+  }
+
+  .pr-kpi-value {
+    font-size: 22pt;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-top: 3px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pr-kpi-sub {
+    font-size: 8pt;
+    color: #666666;
+  }
+
+  .pr-kpi-main .pr-kpi-label,
+  .pr-kpi-main .pr-kpi-sub {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .pr-section {
+    margin-bottom: 18px;
+    break-inside: avoid;
+  }
+
+  .pr-inputs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin: 0;
+    border-top: 1px solid #e2e2e2;
+    border-bottom: 1px solid #e2e2e2;
+  }
+
+  .pr-inputs div {
+    padding: 8px 12px 8px 0;
+  }
+
+  .pr-inputs div + div {
+    padding-left: 12px;
+    border-left: 1px solid #e2e2e2;
+  }
+
+  .pr-inputs dt {
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #666666;
+  }
+
+  .pr-inputs dd {
+    margin: 2px 0 0 0;
+    font-size: 11pt;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+  }
+
+  .pr-table th {
+    background: none;
+    color: #666666;
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    text-align: left;
+    padding: 0 8px 6px 0;
+    border-bottom: 1.5px solid #1a1a1a;
+  }
+
+  .pr-table td {
+    padding: 6px 8px 6px 0;
+    border-bottom: 1px solid #e8e8e8;
+    vertical-align: top;
+  }
+
+  .pr-table tr { break-inside: avoid; }
+
+  .pr-table .pr-num {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pr-act { font-weight: 600; }
+
+  .pr-desc {
+    font-size: 8pt;
+    color: #666666;
+    margin-top: 1px;
+  }
+
+  .pr-nowrap { white-space: nowrap; color: #444444; }
+
+  .pr-share { width: 92px; }
+
+  .pr-bar {
+    height: 6px;
+    margin-top: 5px;
+    background: #eeeeee;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .pr-bar span {
+    display: block;
+    height: 100%;
+    background: var(--primary-red);
+    border-radius: 3px;
+  }
+
+  .pr-pct {
+    font-size: 7.5pt;
+    color: #666666;
+    margin-top: 2px;
+  }
+
+  .pr-table .pr-totals td {
+    border-bottom: none;
+    padding-top: 6px;
+    padding-bottom: 2px;
+  }
+
+  .pr-table .pr-totals tr:first-child td {
+    border-top: 1.5px solid #1a1a1a;
+    padding-top: 8px;
+  }
+
+  .pr-table .pr-totals .pr-total td {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: var(--dark-red);
+    padding-top: 8px;
+  }
+
+  .pr-empty {
+    color: #666666;
+    font-style: italic;
+  }
+
+  .pr-method {
+    background: #f6f6f6;
+    border-left: 3px solid var(--primary-red);
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    font-size: 8.5pt;
+    color: #333333;
+  }
+
+  .pr-formula {
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 8.5pt;
+    background: #ffffff;
+    border: 1px solid #e2e2e2;
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin: 6px 0 8px 0;
+  }
+
+  .pr-method ul {
+    margin: 0;
+    padding-left: 16px;
+  }
+
+  .pr-method li { margin: 2px 0; }
 </style>
 </head>
 <body>
@@ -346,7 +643,7 @@
       <div id="results"></div>
       <div class="button-group">
         <button id="btnSaveProject" onclick="saveProject()">Save Project</button>
-        <button class="btn-secondary" onclick="window.print()">🖨️ Print / Export PDF Summary</button>
+        <button class="btn-secondary" onclick="exportPdf()">🖨️ Print / Export PDF Summary</button>
       </div>
     </section>
   </div>
@@ -398,6 +695,9 @@
     </div>
   </div>
 </div>
+
+<!-- PDF REPORT (print only; filled by renderPrintReport) -->
+<div id="printReport"></div>
 
 <script>
 // ---------- Tooltip Engine ----------
@@ -1183,6 +1483,116 @@ function downloadCsv() {
   a.download = 'pm-effort-admin.csv';
   a.click();
 }
+
+// ---------- PDF Report ----------
+function fmtNum(n, digits = 1) {
+  return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+function cadenceLabel(a, s) {
+  const h = Number(a.hours) || 0;
+  const hrs = `${h} ${h === 1 ? 'hr' : 'hrs'}`;
+  if (a.unit === 'week') return `${hrs}/wk × ${Number(s.pmWeeksPerYear) || 52} wks`;
+  if (a.unit === 'month') return `${hrs}/mo × 12`;
+  if (a.unit === 'each') return `${hrs} × ${Number(a.timesPerYear) || 0}/yr`;
+  return `${hrs}/yr`;
+}
+
+function renderPrintReport() {
+  const el = document.getElementById('printReport');
+  if (!el || !config) return;
+  const s = config.settings;
+  const p = currentProject();
+  const r = calculate(config, p);
+  const subawardAdd = p.subawards * (s.subawardRate || 0);
+  const budgetAdd = (p.budget / 100000) * (s.budgetRatePer100k || 0);
+  const capped = 1 + subawardAdd + budgetAdd > r.multiplier;
+  const prepared = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const rows = r.chosenActivities.map(a => {
+    const hrs = annualHours(a, s);
+    const share = r.baseHours > 0 ? (hrs / r.baseHours) * 100 : 0;
+    return `<tr>
+      <td><div class="pr-act">${esc(a.name)}</div>${a.description ? `<div class="pr-desc">${esc(a.description)}</div>` : ''}</td>
+      <td class="pr-nowrap">${esc(cadenceLabel(a, s))}</td>
+      <td class="pr-num">${fmtNum(hrs)}</td>
+      <td class="pr-share"><div class="pr-bar"><span style="width: ${share.toFixed(1)}%;"></span></div><div class="pr-pct">${fmtNum(share, 0)}% of base</div></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" class="pr-empty">No activities selected.</td></tr>';
+
+  el.innerHTML = `
+    <header class="pr-header">
+      <img src="https://lh3.googleusercontent.com/d/1cIvth3YfwxjgPgVF5PqcQYOwZnlRCPWJ" alt="Southern Utah University">
+      <div class="pr-title">
+        <div class="pr-eyebrow">Project Management Effort Estimate</div>
+        <h1>${esc(p.name)}</h1>
+      </div>
+      <div class="pr-meta">Prepared<b>${esc(prepared)}</b></div>
+    </header>
+
+    <div class="pr-kpis">
+      <div class="pr-kpi pr-kpi-main">
+        <div class="pr-kpi-label">Total annualized hours</div>
+        <div class="pr-kpi-value">${fmtNum(r.totalHours)}</div>
+        <div class="pr-kpi-sub">hours per year, after complexity adjustment</div>
+      </div>
+      <div class="pr-kpi">
+        <div class="pr-kpi-label">FTE</div>
+        <div class="pr-kpi-value">${fmtNum(r.ftePercent)}%</div>
+        <div class="pr-kpi-sub">of a ${fmtNum(s.fullTimeHours, 0)}-hour work year</div>
+      </div>
+      <div class="pr-kpi">
+        <div class="pr-kpi-label">Student hours / week</div>
+        <div class="pr-kpi-value">${fmtNum(r.studentHoursPerWeek)}</div>
+        <div class="pr-kpi-sub">over ${fmtNum(s.studentWeeksPerYear, 0)} working weeks</div>
+      </div>
+    </div>
+
+    <div class="pr-section">
+      <h2>Project inputs</h2>
+      <dl class="pr-inputs">
+        <div><dt>Annual budget</dt><dd>$${p.budget.toLocaleString()}</dd></div>
+        <div><dt>Subawards</dt><dd>${p.subawards}</dd></div>
+        <div><dt>Activities</dt><dd>${r.chosenActivities.length} of ${config.activities.length}</dd></div>
+        <div><dt>Complexity multiplier</dt><dd>${r.multiplier.toFixed(2)}×</dd></div>
+      </dl>
+    </div>
+
+    <div class="pr-section" style="break-inside: auto;">
+      <h2>Selected activities</h2>
+      <table class="pr-table">
+        <thead><tr><th>Activity</th><th>Expected effort</th><th class="pr-num">Hours / yr</th><th>Share</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tbody class="pr-totals">
+          <tr><td colspan="2">Base hours</td><td class="pr-num">${fmtNum(r.baseHours)}</td><td></td></tr>
+          <tr><td colspan="2">Complexity multiplier</td><td class="pr-num">× ${r.multiplier.toFixed(2)}</td><td></td></tr>
+          <tr class="pr-total"><td colspan="2">Total annualized hours</td><td class="pr-num">${fmtNum(r.totalHours)}</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pr-section pr-method">
+      <h2>How this was calculated</h2>
+      <div class="pr-formula">multiplier = 1 + (${p.subawards} subawards × ${s.subawardRate}) + ($${fmtNum(p.budget / 1000, 0)}k ÷ $100k × ${s.budgetRatePer100k}) = ${(1 + subawardAdd + budgetAdd).toFixed(3)}${capped ? ` → capped at ${s.multiplierCap}` : ''}</div>
+      <ul>
+        <li><b>Base hours</b> add up each selected activity's annual hours (weekly × ${fmtNum(s.pmWeeksPerYear, 0)} weeks, monthly × 12).</li>
+        <li><b>Total hours</b> = base hours × complexity multiplier (maximum ${s.multiplierCap}×).</li>
+        <li><b>FTE %</b> = total hours ÷ ${fmtNum(s.fullTimeHours, 0)}. <b>Student hours/week</b> = total hours ÷ ${fmtNum(s.studentWeeksPerYear, 0)} weeks.</li>
+      </ul>
+    </div>`;
+}
+
+function exportPdf() {
+  renderPrintReport();
+  const originalTitle = document.title;
+  // The browser uses the page title as the default PDF file name.
+  document.title = 'PM Effort Estimate - ' + currentProject().name;
+  window.addEventListener('afterprint', () => { document.title = originalTitle; }, { once: true });
+  window.print();
+}
+
+// Keep Ctrl/Cmd+P output in sync with the calculator too.
+window.addEventListener('beforeprint', renderPrintReport);
 
 document.addEventListener('DOMContentLoaded', init);
 </script>

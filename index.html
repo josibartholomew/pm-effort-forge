@@ -717,13 +717,32 @@ function initTooltips() {
   document.addEventListener('mouseout', e => {
     if (e.target.closest('.tooltip-icon')) hideTooltip();
   });
+
+  document.addEventListener('focusin', e => {
+    const icon = e.target.closest('.tooltip-icon');
+    if (icon && icon.dataset.tooltip) showTooltip(icon, icon.dataset.tooltip);
+  });
+
+  document.addEventListener('focusout', e => {
+    if (e.target.closest('.tooltip-icon')) hideTooltip();
+  });
+
+  document.addEventListener('click', e => {
+    const icon = e.target.closest('.tooltip-icon');
+    if (icon && icon.dataset.tooltip) {
+      // Always show: a tap or click has already shown it via focus/hover, so toggling would hide it again.
+      e.stopPropagation();
+      showTooltip(icon, icon.dataset.tooltip);
+    } else {
+      hideTooltip();
+    }
+  });
 }
 
 function showTooltip(elem, text) {
   const tipEl = document.getElementById('global-tooltip');
   if (!tipEl) return;
   tipEl.textContent = text;
-  tipEl.dataset.owner = text;
   
   const rect = elem.getBoundingClientRect();
   tipEl.classList.add('visible');
@@ -747,7 +766,9 @@ function hideTooltip() {
 }
 
 // ---------- Tab Navigation & Authentication ----------
-let isAdminAuthenticated = false;
+// The password is checked by the Apps Script backend. Standalone mode has no
+// backend (and stores everything in the viewer's own browser), so it has no lock.
+let isAdminAuthenticated = typeof google === 'undefined' || !google.script || !google.script.run;
 
 function switchTab(tabId, btn) {
   document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));

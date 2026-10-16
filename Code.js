@@ -162,9 +162,6 @@ function getSavedProjects() {
     });
   }
 
-  const projects = data.slice(1).map((r, i) => {
-    const rawActText = String(r[4] || '').trim();
-
   // Row 1 is headers. Data starts at Row 2
   const projects = data.slice(1).map((r, i) => {
     const rawActText = String(r[4] || '').trim();
@@ -185,8 +182,6 @@ function getSavedProjects() {
     }
 
     return {
-      id: i,
-      rowIndex: i + 2,
       id: i,                          // Original 0-based data index
       rowIndex: i + 2,                // Actual row number in Google Sheet
       savedAt: r[0] instanceof Date ? r[0].toLocaleString() : String(r[0] || ''),
@@ -194,10 +189,6 @@ function getSavedProjects() {
       budget: parseNum_(r[2]),
       subawards: parseNum_(r[3]),
       activitiesText: rawActText,
-      selectedNames: namesArray,
-      activities: namesArray,
-      selectedIds: idsArray,
-      selectedActivities: namesArray,
       selectedNames: namesArray,      // Array of Activity Names
       activities: namesArray,         // Alias array
       selectedIds: idsArray,          // Array of Activity IDs

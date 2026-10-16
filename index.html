@@ -156,6 +156,10 @@
     border: none;
   }
 
+  tr.selected-row {
+    background-color: #ffffff;
+  }
+
   tr.unselected-row {
     opacity: 0.6;
     background-color: #fafafa;
@@ -475,6 +479,7 @@
       <div class="button-group">
         <button class="btn-secondary" onclick="selectAll(true)">Select All</button> 
         <button class="btn-secondary" onclick="selectAll(false)">Select None</button>
+        <button class="btn-secondary" onclick="resetProjectForm()">Reset Calculator</button>
       </div>
     </section>
 
@@ -577,7 +582,7 @@ function showTooltip(elem, text) {
   let top = rect.top - tipEl.offsetHeight - 8;
   let left = rect.left + (rect.width / 2) - (tipEl.offsetWidth / 2);
 
-  if (top < 10) top = rect.bottom + 8; // move below icon if offscreen top
+  if (top < 10) top = rect.bottom + 8;
   if (left < 10) left = 10;
   if (left + tipEl.offsetWidth > window.innerWidth - 10) {
     left = window.innerWidth - tipEl.offsetWidth - 10;
@@ -600,8 +605,10 @@ function switchTab(tabId, btn) {
     tb.setAttribute('aria-selected', 'false');
   });
   document.getElementById(tabId).classList.add('active');
-  btn.classList.add('active');
-  btn.setAttribute('aria-selected', 'true');
+  if (btn) {
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+  }
   if (tabId === 'tab-saved') renderSaved();
 }
 
@@ -648,9 +655,9 @@ function annualHours(a, s) {
   return h; // year
 }
 
-function calculate(config, project) {
-  const s = config.settings;
-  const chosen = config.activities.filter(a => project.selected.includes(a.id));
+function calculate(cfg, project) {
+  const s = cfg.settings;
+  const chosen = cfg.activities.filter(a => project.selected.includes(a.id));
   const baseHours = chosen.reduce((sum, a) => sum + annualHours(a, s), 0);
   const budget = Math.max(0, Number(project.budget) || 0);
   const subawards = Math.max(0, Number(project.subawards) || 0);
@@ -687,7 +694,7 @@ function lsGet(key) {
   try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
 }
 function lsSet(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { alert('Could not save in this browser: ' + e); }
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { alert('Could not save in browser storage: ' + e); }
 }
 
 const SOURCE_KEY = 'pmEffort.source';
@@ -723,12 +730,16 @@ store.saveConfig = c => configStores[source].save(c);
 // ---------- Application Logic ----------
 let config = null;
 let selected = [];
+let savedProjectsCache = [];
 
 function copy(x) { return JSON.parse(JSON.stringify(x)); }
 function esc(x) {
   return String(x ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
-function setStatus(msg) { document.getElementById('status').textContent = msg; }
+function setStatus(msg) { 
+  const el = document.getElementById('status');
+  if (el) el.textContent = msg; 
+}
 
 function normalize(c) {
   c = c || {};
@@ -739,7 +750,7 @@ function normalize(c) {
   }
   if (Array.isArray(c.activities)) {
     c.activities.forEach(a => {
-      const def = DEFAULT_CONFIG.activities.find(d => d.id === a.id || d.name.toLowerCase() === a.name.toLowerCase());
+      const def = DEFAULT_CONFIG.activities.find(d => d.id === a.id || d.name.toLowerCase() === (a.name || '').toLowerCase());
       if (def) {
         if (!a.description) a.description = def.description;
         if (a.hours === undefined || a.hours === null) a.hours = def.hours;
@@ -753,7 +764,7 @@ function normalize(c) {
 
 function sourceStatus() {
   if (source === 'sheet') return 'Synced with Google Sheet';
-  return IS_GAS ? 'Using uploaded CSV (stored in this browser)' : 'Working locally (Browser storage)';
+  return IS_GAS ? 'Using uploaded CSV (stored in browser)' : 'Working locally (Browser storage)';
 }
 
 async function loadConfig() {
@@ -776,9 +787,17 @@ async function loadConfig() {
 
 async function init() {
   initTooltips();
-  if (IS_GAS) document.getElementById('jsonTools').style.display = 'none';
+  if (IS_GAS) {
+    const jsonTools = document.getElementById('jsonTools');
+    if (jsonTools) jsonTools.style.display = 'none';
+  }
   await loadConfig();
-  renderSaved();
+  await renderSaved();
+
+  ['projName', 'projBudget', 'projSubawards'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', renderResults);
+  });
 }
 
 function currentProject() {
@@ -791,6 +810,25 @@ function currentProject() {
 }
 
 function renderAll() { renderUser(); renderAdmin(); renderResults(); }
+
+function toggle(i, on) {
+  const act = config.activities[i];
+  if (!act) return;
+  const id = act.id;
+  selected = on ? (selected.includes(id) ? selected : selected.concat([id])) : selected.filter(x => x !== id);
+
+  const row = document.getElementById(`activity-row-${i}`);
+  if (row) {
+    row.className = on ? 'selected-row' : 'unselected-row';
+  }
+  renderResults();
+}
+
+function selectAll(on) {
+  selected = on ? config.activities.map(a => a.id) : [];
+  renderUser(); 
+  renderResults();
+}
 
 function renderUser() {
   const s = config.settings;
@@ -876,7 +914,8 @@ async function renderSaved() {
   const el = document.getElementById('savedProjects');
   try {
     const list = await store.listProjects();
-    if (!list || !list.length) {
+    savedProjectsCache = list || [];
+    if (!savedProjectsCache || !savedProjectsCache.length) {
       el.innerHTML = `
         <div style="padding: 16px 20px; background-color: var(--light-gray); border-radius: 6px; border-left: 4px solid var(--primary-red);">
           <p style="margin: 0 0 6px 0; font-weight: 600; color: var(--black);">No saved projects found.</p>
@@ -889,7 +928,7 @@ async function renderSaved() {
     }
 
     el.innerHTML = '<div class="table-wrapper"><table><tr><th>Saved At</th><th>Project Name</th><th>Budget</th><th>Subawards</th><th>Total Hrs</th><th>FTE %</th><th style="text-align: center;">Actions</th></tr>' +
-      list.map((p, idx) => {
+      savedProjectsCache.map((p, idx) => {
         const id = p.id !== undefined ? p.id : idx;
         const budgetVal = Number(p.budget) || 0;
         const totalHrs = p.totalHours || p.results?.totalHours || 0;
@@ -902,7 +941,7 @@ async function renderSaved() {
           <td>${totalHrs.toFixed(1)}</td>
           <td>${ftePct.toFixed(1)}%</td>
           <td style="text-align: center; white-space: nowrap;">
-            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8em; margin-right: 4px;" onclick="loadProject(${esc(JSON.stringify(p.name))}, ${budgetVal}, ${p.subawards})">Load</button>
+            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8em; margin-right: 4px;" onclick="loadProject(${id})">Load</button>
             <button class="btn-danger" style="padding: 4px 10px; font-size: 0.8em;" onclick="deleteProject(${id}, ${esc(JSON.stringify(p.name))})">Delete</button>
           </td>
         </tr>`;
@@ -912,13 +951,90 @@ async function renderSaved() {
   }
 }
 
-function loadProject(name, budget, subawards) {
-  document.getElementById('projName').value = name;
-  document.getElementById('projBudget').value = budget;
-  document.getElementById('projSubawards').value = subawards;
-  switchTab('tab-calculator', document.getElementById('btn-tab-calculator'));
+function loadProject(id) {
+  const p = savedProjectsCache.find((proj, idx) => (proj.id !== undefined ? proj.id : idx) === id || proj.rowIndex === id);
+  if (!p) {
+    alert('Could not find saved project details.');
+    return;
+  }
+
+  // Populate project input fields
+  document.getElementById('projName').value = p.name || '';
+  document.getElementById('projBudget').value = p.budget || 0;
+  document.getElementById('projSubawards').value = p.subawards || 0;
+
+  // Gather selected activities
+  const rawList = [];
+  if (Array.isArray(p.selected)) rawList.push(...p.selected);
+  if (Array.isArray(p.selectedIds)) rawList.push(...p.selectedIds);
+  if (Array.isArray(p.selectedNames)) rawList.push(...p.selectedNames);
+  if (Array.isArray(p.activities)) rawList.push(...p.activities);
+  if (Array.isArray(p.selectedActivities)) rawList.push(...p.selectedActivities);
+
+  if (p.activitiesText) {
+    p.activitiesText.split(',').forEach(s => rawList.push(s.trim()));
+  }
+
+  const normalizedRawList = rawList.map(item => String(item).trim().toLowerCase());
+  const rawText = String(p.activitiesText || '').toLowerCase();
+
+  // Match against config.activities catalog
+  selected = config.activities
+    .filter(act => {
+      const actId = String(act.id || '').trim().toLowerCase();
+      const actName = String(act.name || '').trim().toLowerCase();
+      return normalizedRawList.includes(actId) || 
+             normalizedRawList.includes(actName) || 
+             (actName && rawText.includes(actName));
+    })
+    .map(act => act.id);
+
+  // Update UI & switch tab
+  renderUser();
   renderResults();
-  setStatus(`Loaded project "${name}".`);
+  
+  const calcBtn = document.getElementById('btn-tab-calculator');
+  if (calcBtn) switchTab('tab-calculator', calcBtn);
+
+  setStatus('Loaded project "' + (p.name || 'Untitled') + '".');
+}
+
+function resetProjectForm() {
+  document.getElementById('projName').value = 'Test project';
+  document.getElementById('projBudget').value = 250000;
+  document.getElementById('projSubawards').value = 1;
+  selected = config.activities.map(a => a.id);
+  renderUser();
+  renderResults();
+  setStatus('Reset project inputs to defaults.');
+}
+
+async function saveProject() {
+  const btn = document.getElementById('btnSaveProject');
+  if (btn) btn.disabled = true;
+  const p = currentProject();
+  const results = calculate(config, p);
+  const chosenActs = results.chosenActivities || [];
+  const names = chosenActs.map(a => a.name);
+  const ids = chosenActs.map(a => a.id);
+  
+  setStatus('Saving project...');
+  try {
+    await store.saveProject({
+      ...p,
+      selectedNames: names,
+      selectedIds: ids,
+      activities: names,
+      results,
+      savedAt: new Date().toLocaleString()
+    });
+    setStatus('Project saved successfully.');
+    await renderSaved();
+  } catch (e) { 
+    setStatus('Error saving project: ' + (e.message || e)); 
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 async function deleteProject(id, projName) {
@@ -933,32 +1049,16 @@ async function deleteProject(id, projName) {
     setStatus('Project deleted.');
     await renderSaved();
   } catch (e) {
-    setStatus('Error deleting project: ' + e);
+    setStatus('Error deleting project: ' + (e.message || e));
   }
-}
-
-// ---------- Actions ----------
-function toggle(i, on) {
-  const id = config.activities[i].id;
-  selected = on ? selected.concat([id]) : selected.filter(x => x !== id);
-
-  const row = document.getElementById(`activity-row-${i}`);
-  if (row) {
-    row.className = on ? 'selected-row' : 'unselected-row';
-  }
-  renderResults();
-}
-
-function selectAll(on) {
-  selected = on ? config.activities.map(a => a.id) : [];
-  renderUser(); 
-  renderResults();
 }
 
 function editActivity(i, field, value) {
-  config.activities[i][field] = value;
-  renderUser(); 
-  renderResults();
+  if (config.activities[i]) {
+    config.activities[i][field] = value;
+    renderUser(); 
+    renderResults();
+  }
 }
 
 function addActivity() {
@@ -969,10 +1069,13 @@ function addActivity() {
 }
 
 function removeActivity(i) {
-  const id = config.activities[i].id;
-  config.activities.splice(i, 1);
-  selected = selected.filter(x => x !== id);
-  renderAll();
+  const act = config.activities[i];
+  if (act) {
+    const id = act.id;
+    config.activities.splice(i, 1);
+    selected = selected.filter(x => x !== id);
+    renderAll();
+  }
 }
 
 function editSetting(k, value) {
@@ -982,15 +1085,15 @@ function editSetting(k, value) {
 
 async function saveAdmin() {
   const btn = document.getElementById('btnSaveAdmin');
-  btn.disabled = true;
+  if (btn) btn.disabled = true;
   setStatus('Saving admin changes...');
   try { 
     await store.saveConfig(config); 
     setStatus('Admin changes saved successfully.'); 
   } catch (e) { 
-    setStatus('Error saving admin changes: ' + e); 
+    setStatus('Error saving admin changes: ' + (e.message || e)); 
   } finally {
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -1000,24 +1103,6 @@ async function resetDefaults() {
   selected = config.activities.map(a => a.id);
   renderAll();
   await saveAdmin();
-}
-
-async function saveProject() {
-  const btn = document.getElementById('btnSaveProject');
-  btn.disabled = true;
-  const p = currentProject();
-  const results = calculate(config, p);
-  const names = config.activities.filter(a => p.selected.includes(a.id)).map(a => a.name);
-  setStatus('Saving project...');
-  try {
-    await store.saveProject({ ...p, selectedNames: names, results, savedAt: new Date().toLocaleString() });
-    setStatus('Project saved successfully.');
-    renderSaved();
-  } catch (e) { 
-    setStatus('Error saving project: ' + e); 
-  } finally {
-    btn.disabled = false;
-  }
 }
 
 function exportConfig() {
@@ -1053,8 +1138,10 @@ function renderSourcePanel() {
     r.checked = r.value === source;
     if (r.value === 'sheet') r.disabled = !IS_GAS;
   });
-  document.getElementById('sheetNote').textContent = IS_GAS ? '' : '(not available - open the calculator from Google Sheets)';
-  document.getElementById('btnInput').textContent = 'Input: ' + (source === 'sheet' ? 'Google Sheet' : 'CSV');
+  const note = document.getElementById('sheetNote');
+  if (note) note.textContent = IS_GAS ? '' : '(not available - open the calculator from Google Sheets)';
+  const btn = document.getElementById('btnInput');
+  if (btn) btn.textContent = 'Input: ' + (source === 'sheet' ? 'Google Sheet' : 'CSV');
 }
 
 async function setSource(next) {
@@ -1095,8 +1182,7 @@ function parseCsv(text) {
   return rows.filter(r => r.some(f => f.trim() !== ''));
 }
 
-function toCsv(rows) {
-  return rows.map(r => r.map(v => {
+function toCsv(rows) {  return rows.map(r => r.map(v => {
     const s = String(v ?? '');
     return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }).join(',')).join('\r\n');
@@ -1183,12 +1269,7 @@ function downloadCsv() {
   a.click();
 }
 
-['projName', 'projBudget', 'projSubawards'].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('input', renderResults);
-});
-
-init();
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>

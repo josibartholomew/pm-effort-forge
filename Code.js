@@ -1,5 +1,7 @@
 // PM Effort Calculator: Serves index.html and synchronizes project data with Google Sheets.
-// Tabs created/managed: 'Activities' (catalog), 'Settings' (key/value), 'Projects' (saved projects log).
+
+// Hardcoded Admin Password (change 'admin123' to your preferred password)
+const ADMIN_PASSWORD = 'admin123';
 
 const ACTIVITY_HEADERS = ['id', 'name', 'description', 'hours', 'unit', 'timesPerYear'];
 const PROJECT_HEADERS = [
@@ -8,8 +10,12 @@ const PROJECT_HEADERS = [
 ];
 
 /**
- * Utility: Safely parses numeric strings like "$250,000", "14.1%", or raw numbers into floats
+ * Server-side password verification (runs strictly on Google servers)
  */
+function verifyAdminPassword(pwd) {
+  return pwd === ADMIN_PASSWORD;
+}
+
 function parseNum_(val) {
   if (typeof val === 'number') return isNaN(val) ? 0 : val;
   if (!val) return 0;
@@ -31,14 +37,12 @@ function showCalculator() {
   SpreadsheetApp.getUi().showModalDialog(html, 'PM Effort Calculator');
 }
 
-// Also usable as a web app (Deploy > New deployment > Web app).
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('PM Effort Calculator')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// Bound script: the Sheet it's attached to. Standalone: set script property SPREADSHEET_ID.
 function getSpreadsheet_() {
   const active = SpreadsheetApp.getActiveSpreadsheet();
   if (active) return active;
@@ -51,7 +55,7 @@ function getConfig() {
   const ss = getSpreadsheet_();
   const actSheet = ss.getSheetByName('Activities');
   const setSheet = ss.getSheetByName('Settings');
-  if (!actSheet || !setSheet) return null; // index.html will seed defaults
+  if (!actSheet || !setSheet) return null;
 
   const activities = actSheet.getDataRange().getValues().slice(1)
     .filter(r => r[1] !== '')
@@ -102,7 +106,6 @@ function saveProject(p) {
 
   const r = p.results || {};
 
-  // Extract selected activity list flexibly from whatever property format frontend sends
   let actStr = '';
   if (Array.isArray(p.selectedNames) && p.selectedNames.length > 0) {
     actStr = p.selectedNames.join(', ');
@@ -129,7 +132,6 @@ function saveProject(p) {
     baseHours, multiplier, totalHours, fteDecimal, studentHours
   ]);
 
-  // Format row cells for clean visual display in Google Sheets
   const lastRow = sheet.getLastRow();
   sheet.getRange(lastRow, 1).setNumberFormat('yyyy-mm-dd hh:mm');
   sheet.getRange(lastRow, 3).setNumberFormat('$#,##0');
@@ -147,7 +149,6 @@ function getSavedProjects() {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
 
-  // Build Activity Name <-> ID lookup map from 'Activities' tab
   const nameToIdMap = {};
   const actSheet = ss.getSheetByName('Activities');
   if (actSheet) {
@@ -161,6 +162,9 @@ function getSavedProjects() {
     });
   }
 
+  const projects = data.slice(1).map((r, i) => {
+    const rawActText = String(r[4] || '').trim();
+
   // Row 1 is headers. Data starts at Row 2
   const projects = data.slice(1).map((r, i) => {
     const rawActText = String(r[4] || '').trim();
@@ -170,7 +174,6 @@ function getSavedProjects() {
       ? rawActText.split(',').map(s => s.trim()).filter(s => s.length > 0)
       : [];
 
-    // Map names to IDs
     const idsArray = namesArray.map(item => {
       const lower = item.toLowerCase();
       return nameToIdMap[lower] || item;
@@ -182,6 +185,8 @@ function getSavedProjects() {
     }
 
     return {
+      id: i,
+      rowIndex: i + 2,
       id: i,                          // Original 0-based data index
       rowIndex: i + 2,                // Actual row number in Google Sheet
       savedAt: r[0] instanceof Date ? r[0].toLocaleString() : String(r[0] || ''),
@@ -189,6 +194,10 @@ function getSavedProjects() {
       budget: parseNum_(r[2]),
       subawards: parseNum_(r[3]),
       activitiesText: rawActText,
+      selectedNames: namesArray,
+      activities: namesArray,
+      selectedIds: idsArray,
+      selectedActivities: namesArray,
       selectedNames: namesArray,      // Array of Activity Names
       activities: namesArray,         // Alias array
       selectedIds: idsArray,          // Array of Activity IDs
@@ -201,7 +210,7 @@ function getSavedProjects() {
     };
   });
 
-  return projects.reverse(); // Latest saved projects first
+  return projects.reverse();
 }
 
 function deleteSavedProject(id) {

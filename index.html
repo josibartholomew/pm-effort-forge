@@ -6,7 +6,7 @@
 <title>PM Effort Calculator</title>
 <style>
   :root {
-    --primary-red: #DB0000; /* SUU Official Red */
+    --primary-red: #DB0000;
     --dark-red: #990000;
     --black: #000000;
     --dark-gray: #333333;
@@ -29,7 +29,6 @@
     margin: 0 auto;
   }
 
-  /* Header & Logo */
   .app-header {
     display: flex;
     align-items: center;
@@ -67,7 +66,6 @@
     font-weight: 500;
   }
 
-  /* Tab Navigation */
   .tab-nav {
     display: flex;
     background-color: var(--black);
@@ -89,9 +87,7 @@
     border-radius: 0;
   }
 
-  .tab-button:hover {
-    background-color: #222222;
-  }
+  .tab-button:hover { background-color: #222222; }
 
   .tab-button.active {
     background-color: var(--white);
@@ -99,14 +95,8 @@
     border-bottom: 4px solid var(--primary-red);
   }
 
-  /* Tab Panels */
-  .tab-content {
-    display: none;
-  }
-
-  .tab-content.active {
-    display: block;
-  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
 
   section { 
     background: var(--white); 
@@ -127,18 +117,11 @@
   .table-wrapper {
     width: 100%;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     margin-top: 15px;
   }
 
-  .table-wrapper table {
-    min-width: 650px;
-  }
-
-  table { 
-    border-collapse: collapse; 
-    width: 100%; 
-  }
+  .table-wrapper table { min-width: 650px; }
+  table { border-collapse: collapse; width: 100%; }
   
   td, th { 
     border-bottom: 1px solid var(--border-color); 
@@ -156,20 +139,11 @@
     border: none;
   }
 
-  tr.selected-row {
-    background-color: #ffffff;
-  }
+  tr.selected-row { background-color: #ffffff; }
+  tr.unselected-row { opacity: 0.6; background-color: #fafafa; }
+  tr:hover td { background-color: #fcfcfc; }
 
-  tr.unselected-row {
-    opacity: 0.6;
-    background-color: #fafafa;
-  }
-
-  tr:hover td {
-    background-color: #fcfcfc;
-  }
-
-  input[type=number], input[type=text], select { 
+  input[type=number], input[type=text], input[type=password], select { 
     width: 100%; 
     box-sizing: border-box;
     padding: 8px 10px;
@@ -180,16 +154,8 @@
     transition: border-color 0.2s, outline 0.2s;
   }
 
-  input[type=number]:focus, input[type=text]:focus, select:focus {
+  input[type=number]:focus, input[type=text]:focus, input[type=password]:focus, select:focus {
     outline: none;
-    border-color: var(--primary-red);
-  }
-
-  button:focus-visible, 
-  input:focus-visible, 
-  select:focus-visible {
-    outline: 3px solid var(--black);
-    outline-offset: 2px;
     border-color: var(--primary-red);
   }
 
@@ -213,34 +179,14 @@
     font-size: 0.95rem;
   }
 
-  button:hover {
-    background-color: var(--dark-red);
-  }
+  button:hover { background-color: var(--dark-red); }
+  button:disabled { background-color: #ccc; cursor: not-allowed; }
 
-  button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-  }
+  .btn-secondary { background-color: var(--dark-gray); }
+  .btn-secondary:hover { background-color: var(--black); }
 
-  button:active:not(:disabled) {
-    transform: scale(0.98);
-  }
-
-  .btn-secondary {
-    background-color: var(--dark-gray);
-  }
-
-  .btn-secondary:hover {
-    background-color: var(--black);
-  }
-
-  .btn-danger {
-    background-color: var(--primary-red);
-  }
-
-  .btn-danger:hover {
-    background-color: var(--dark-red);
-  }
+  .btn-danger { background-color: var(--primary-red); }
+  .btn-danger:hover { background-color: var(--dark-red); }
 
   .button-group {
     margin-top: 16px;
@@ -271,9 +217,7 @@
     text-transform: uppercase;
   }
 
-  .header-actions {
-    margin-left: auto;
-  }
+  .header-actions { margin-left: auto; }
 
   .source-option {
     display: block;
@@ -281,10 +225,7 @@
     font-weight: 500;
   }
 
-  .source-option input {
-    margin-right: 8px;
-    transform: scale(1.2);
-  }
+  .source-option input { margin-right: 8px; transform: scale(1.2); }
 
   .source-note {
     color: #666666;
@@ -293,7 +234,6 @@
     margin-left: 6px;
   }
 
-  /* Tooltip Badge Styles */
   .tooltip-icon {
     display: inline-flex;
     align-items: center;
@@ -311,15 +251,8 @@
     padding: 0;
     line-height: 1;
     vertical-align: middle;
-    transition: background-color 0.2s, transform 0.1s;
   }
 
-  .tooltip-icon:hover, .tooltip-icon:focus {
-    background-color: var(--primary-red);
-    outline: none;
-  }
-
-  /* Viewport-fixed Tooltip Popup */
   #global-tooltip {
     position: fixed;
     background-color: var(--black);
@@ -327,7 +260,6 @@
     padding: 8px 12px;
     border-radius: 6px;
     font-size: 0.82rem;
-    font-weight: normal;
     max-width: 250px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     z-index: 9999;
@@ -335,83 +267,9 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.15s ease-in-out, visibility 0.15s ease-in-out;
-    line-height: 1.35;
   }
 
-  #global-tooltip.visible {
-    opacity: 1;
-    visibility: visible;
-  }
-
-  /* PRINT / PDF STYLES */
-  @media print {
-    body {
-      background-color: #ffffff !important;
-      color: #000000 !important;
-      padding: 0 !important;
-      margin: 0 !important;
-    }
-
-    .container {
-      max-width: 100% !important;
-      margin: 0 !important;
-    }
-
-    .tab-nav,
-    .button-group,
-    #jsonTools,
-    #inputPanel,
-    .header-actions,
-    #status,
-    .tab-content:not(.active),
-    .tooltip-icon,
-    #global-tooltip {
-      display: none !important;
-    }
-
-    section {
-      box-shadow: none !important;
-      border: 1px solid #cccccc !important;
-      padding: 15px 20px !important;
-      margin-bottom: 15px !important;
-      page-break-inside: avoid;
-    }
-
-    .app-header {
-      box-shadow: none !important;
-      border-top: 4px solid var(--primary-red) !important;
-      padding: 10px 0 !important;
-      margin-bottom: 15px !important;
-      border-bottom: 2px solid var(--black) !important;
-      border-radius: 0 !important;
-    }
-
-    tr.unselected-row {
-      display: none !important;
-    }
-
-    .checkbox-col {
-      display: none !important;
-    }
-
-    input[type=text], input[type=number] {
-      border: none !important;
-      background: transparent !important;
-      padding: 0 !important;
-      font-weight: 600 !important;
-    }
-
-    .table-wrapper table {
-      min-width: 100% !important;
-    }
-
-    th {
-      background-color: var(--black) !important;
-      color: var(--white) !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-  }
+  #global-tooltip.visible { opacity: 1; visibility: visible; }
 </style>
 </head>
 <body>
@@ -503,27 +361,41 @@
 
   <!-- TAB 3: ADMIN & SETTINGS -->
   <div id="tab-admin" class="tab-content" role="tabpanel" aria-labelledby="btn-tab-admin">
-    <section>
-      <h2>Admin: Activity Catalog</h2>
-      <div id="adminActivities"></div>
-      <div class="button-group">
-        <button class="btn-secondary" onclick="addActivity()">+ Add Activity</button>
+    <!-- ADMIN LOCK SCREEN -->
+    <section id="adminLoginPanel" style="max-width: 450px; margin: 30px auto; text-align: center;">
+      <h2>Admin Authentication</h2>
+      <p style="color: var(--dark-gray); font-size: 0.95em;">Please enter the admin password to view or edit catalog settings.</p>
+      <div style="margin: 20px 0;">
+        <input type="password" id="adminPasswordInput" placeholder="Enter Admin Password" style="padding: 10px; text-align: center; font-size: 1rem;" onkeydown="if(event.key==='Enter') submitAdminPassword()">
       </div>
-      
-      <h2 style="margin-top: 30px;">Admin: Calculator Settings</h2>
-      <div id="adminSettings"></div>
-      
-      <div class="button-group">
-        <button id="btnSaveAdmin" onclick="saveAdmin()">Save Admin Changes</button>
-        <button class="btn-secondary" onclick="resetDefaults()">Reset to Defaults</button>
-      </div>
-      
-      <div id="jsonTools" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-        <button class="btn-secondary" onclick="exportConfig()">Export Config (JSON)</button>
-        <span style="margin-left: 15px; font-weight: 500; font-size: 0.9em;">Import Config:</span> 
-        <input type="file" accept=".json" onchange="importConfig(this)" style="font-size: 0.85em;" aria-label="Import configuration file">
-      </div>
+      <button onclick="submitAdminPassword()">Log In</button>
+      <p id="adminLoginError" style="color: var(--primary-red); font-weight: 600; margin-top: 12px; display: none;"></p>
     </section>
+
+    <!-- ADMIN CONTENT (Hidden until password is verified) -->
+    <div id="adminContentPanel" style="display: none;">
+      <section>
+        <h2>Admin: Activity Catalog</h2>
+        <div id="adminActivities"></div>
+        <div class="button-group">
+          <button class="btn-secondary" onclick="addActivity()">+ Add Activity</button>
+        </div>
+        
+        <h2 style="margin-top: 30px;">Admin: Calculator Settings</h2>
+        <div id="adminSettings"></div>
+        
+        <div class="button-group">
+          <button id="btnSaveAdmin" onclick="saveAdmin()">Save Admin Changes</button>
+          <button class="btn-secondary" onclick="resetDefaults()">Reset to Defaults</button>
+        </div>
+        
+        <div id="jsonTools" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+          <button class="btn-secondary" onclick="exportConfig()">Export Config (JSON)</button>
+          <span style="margin-left: 15px; font-weight: 500; font-size: 0.9em;">Import Config:</span> 
+          <input type="file" accept=".json" onchange="importConfig(this)" style="font-size: 0.85em;" aria-label="Import configuration file">
+        </div>
+      </section>
+    </div>
   </div>
 </div>
 
@@ -544,29 +416,6 @@ function initTooltips() {
 
   document.addEventListener('mouseout', e => {
     if (e.target.closest('.tooltip-icon')) hideTooltip();
-  });
-
-  document.addEventListener('focusin', e => {
-    const icon = e.target.closest('.tooltip-icon');
-    if (icon && icon.dataset.tooltip) showTooltip(icon, icon.dataset.tooltip);
-  });
-
-  document.addEventListener('focusout', e => {
-    if (e.target.closest('.tooltip-icon')) hideTooltip();
-  });
-
-  document.addEventListener('click', e => {
-    const icon = e.target.closest('.tooltip-icon');
-    if (icon && icon.dataset.tooltip) {
-      e.stopPropagation();
-      if (tipEl.classList.contains('visible') && tipEl.dataset.owner === icon.dataset.tooltip) {
-        hideTooltip();
-      } else {
-        showTooltip(icon, icon.dataset.tooltip);
-      }
-    } else {
-      hideTooltip();
-    }
   });
 }
 
@@ -597,7 +446,9 @@ function hideTooltip() {
   if (tipEl) tipEl.classList.remove('visible');
 }
 
-// ---------- Tab Navigation Helper ----------
+// ---------- Tab Navigation & Authentication ----------
+let isAdminAuthenticated = false;
+
 function switchTab(tabId, btn) {
   document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
   document.querySelectorAll('.tab-button').forEach(tb => {
@@ -609,7 +460,56 @@ function switchTab(tabId, btn) {
     btn.classList.add('active');
     btn.setAttribute('aria-selected', 'true');
   }
+
+  if (tabId === 'tab-admin') {
+    if (isAdminAuthenticated) {
+      document.getElementById('adminLoginPanel').style.display = 'none';
+      document.getElementById('adminContentPanel').style.display = 'block';
+    } else {
+      document.getElementById('adminLoginPanel').style.display = 'block';
+      document.getElementById('adminContentPanel').style.display = 'none';
+    }
+  }
+
   if (tabId === 'tab-saved') renderSaved();
+}
+
+async function submitAdminPassword() {
+  const pwdInput = document.getElementById('adminPasswordInput');
+  const errEl = document.getElementById('adminLoginError');
+  const pwd = pwdInput ? pwdInput.value : '';
+
+  if (!pwd) {
+    errEl.textContent = 'Please enter a password.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  setStatus('Verifying password...');
+  errEl.style.display = 'none';
+
+  let isValid = false;
+  try {
+    if (IS_GAS) {
+      isValid = await gasCall('verifyAdminPassword', pwd);
+    } else {
+      isValid = false;
+    }
+  } catch (e) {
+    isValid = false;
+  }
+
+  if (isValid) {
+    isAdminAuthenticated = true;
+    document.getElementById('adminLoginPanel').style.display = 'none';
+    document.getElementById('adminContentPanel').style.display = 'block';
+    if (pwdInput) pwdInput.value = '';
+    setStatus(sourceStatus());
+  } else {
+    errEl.textContent = 'Incorrect password. Access denied.';
+    errEl.style.display = 'block';
+    setStatus('Incorrect admin password.');
+  }
 }
 
 function toggleInputPanel() {
@@ -621,12 +521,12 @@ function toggleInputPanel() {
 // ---------- Defaults ----------
 const DEFAULT_CONFIG = {
   settings: {
-    pmWeeksPerYear: 52,        // weekly activities x this
-    studentWeeksPerYear: 48,   // student hrs/wk = total hours / this
-    fullTimeHours: 2080,       // FTE % = total hours / this
-    subawardRate: 0.05,        // multiplier added per subaward
-    budgetRatePer100k: 0.03,   // multiplier added per $100k of budget
-    multiplierCap: 2           // multiplier max cap
+    pmWeeksPerYear: 52,
+    studentWeeksPerYear: 48,
+    fullTimeHours: 2080,
+    subawardRate: 0.05,
+    budgetRatePer100k: 0.03,
+    multiplierCap: 2
   },
   activities: [
     { id: 'monitoring', name: 'Monitoring project activities & workflow', description: 'Tracks project workflows, maintains work plans/deliverable logs, follows up on assigned tasks, and ensures activities stay on schedule.', hours: 2.5, unit: 'week', timesPerYear: '' },
@@ -652,7 +552,7 @@ function annualHours(a, s) {
   if (a.unit === 'week') return h * (Number(s.pmWeeksPerYear) || 52);
   if (a.unit === 'month') return h * 12;
   if (a.unit === 'each') return h * (Number(a.timesPerYear) || 0);
-  return h; // year
+  return h;
 }
 
 function calculate(cfg, project) {
@@ -681,7 +581,7 @@ function calculate(cfg, project) {
   };
 }
 
-// ---------- Storage: Apps Script (Sheet) or Browser (localStorage) ----------
+// ---------- Storage ----------
 const IS_GAS = typeof google !== 'undefined' && google.script && google.script.run;
 const CONFIG_KEY = 'pmEffort.config';
 const PROJECTS_KEY = 'pmEffort.projects';
@@ -727,7 +627,6 @@ const store = IS_GAS ? {
 store.loadConfig = () => configStores[source].load();
 store.saveConfig = c => configStores[source].save(c);
 
-// ---------- Application Logic ----------
 let config = null;
 let selected = [];
 let savedProjectsCache = [];
@@ -989,6 +888,22 @@ function loadProject(id) {
     })
     .map(act => act.id);
 
+  renderUser();
+  renderResults();
+  
+  const calcBtn = document.getElementById('btn-tab-calculator');
+  if (calcBtn) switchTab('tab-calculator', calcBtn);
+
+  setStatus('Loaded project "' + (p.name || 'Untitled') + '".');
+}
+
+function resetProjectForm() {
+  document.getElementById('projName').value = 'Test project';
+  document.getElementById('projBudget').value = 250000;
+  document.getElementById('projSubawards').value = 1;
+  selected = config.activities.map(a => a.id);
+  renderUser();
+  renderResults();
   // Update UI & switch tab
   renderUser();
   renderResults();

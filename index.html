@@ -746,6 +746,7 @@
   <div id="tab-saved" class="tab-content" role="tabpanel" aria-labelledby="btn-tab-saved">
     <section>
       <h2>Saved Project Log</h2>
+      <input type="text" id="savedSearch" placeholder="Search saved projects..." aria-label="Search saved projects" oninput="renderSavedTable()" style="margin-top: 10px;">
       <div id="savedProjects" style="margin-top: 15px; font-size: 0.95em;"></div>
     </section>
   </div>
@@ -1459,42 +1460,58 @@ function renderAdmin() {
 async function renderSaved() {
   const el = document.getElementById('savedProjects');
   try {
-    const list = await store.listProjects();
-    savedProjectsCache = list || [];
-    if (!savedProjectsCache || !savedProjectsCache.length) {
-      el.innerHTML = `
-        <div style="padding: 16px 20px; background-color: var(--light-gray); border-radius: 6px; border-left: 4px solid var(--primary-red);">
-          <p style="margin: 0 0 6px 0; font-weight: 600; color: var(--black);">No saved projects found.</p>
-          <p style="margin: 0; font-size: 0.9em; color: var(--dark-gray);">
-            When you save a project, it will appear here for quick loading and will automatically log to the <strong>Projects</strong> tab in your connected Google Sheet.
-          </p>
-        </div>
-      `;
-      return;
-    }
-
-    el.innerHTML = '<div class="table-wrapper"><table><tr><th>Saved At</th><th>Project Name</th><th>Budget</th><th>Subawards</th><th>Total Hrs</th><th>FTE %</th><th style="text-align: center;">Actions</th></tr>' +
-      savedProjectsCache.map((p, idx) => {
-        const id = p.id !== undefined ? p.id : idx;
-        const budgetVal = Number(p.budget) || 0;
-        const totalHrs = p.totalHours || p.results?.totalHours || 0;
-        const ftePct = p.ftePercent || p.results?.ftePercent || 0;
-        return `<tr>
-          <td>${esc(p.savedAt)}</td>
-          <td><strong>${esc(p.name)}</strong></td>
-          <td>$${budgetVal.toLocaleString()}</td>
-          <td>${esc(p.subawards)}</td>
-          <td>${totalHrs.toFixed(1)}</td>
-          <td>${ftePct.toFixed(1)}%</td>
-          <td style="text-align: center; white-space: nowrap;">
-            <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8em; margin-right: 4px;" onclick="loadProject(${id})">Load</button>
-            <button class="btn-danger" style="padding: 4px 10px; font-size: 0.8em;" onclick="deleteProject(${id}, ${esc(JSON.stringify(p.name))})">Delete</button>
-          </td>
-        </tr>`;
-      }).join('') + '</table></div>';
+    savedProjectsCache = (await store.listProjects()) || [];
+    renderSavedTable();
   } catch (e) {
     el.innerHTML = '<p style="color: var(--dark-red);">Error loading saved projects: ' + esc(e.message || e) + '</p>';
   }
+}
+
+function renderSavedTable() {
+  const el = document.getElementById('savedProjects');
+  if (!savedProjectsCache.length) {
+    el.innerHTML = `
+      <div style="padding: 16px 20px; background-color: var(--light-gray); border-radius: 6px; border-left: 4px solid var(--primary-red);">
+        <p style="margin: 0 0 6px 0; font-weight: 600; color: var(--black);">No saved projects found.</p>
+        <p style="margin: 0; font-size: 0.9em; color: var(--dark-gray);">
+          When you save a project, it will appear here for quick loading and will automatically log to the <strong>Projects</strong> tab in your connected Google Sheet.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  const q = (document.getElementById('savedSearch')?.value || '').trim().toLowerCase();
+  // Keep the original index so Load/Delete IDs still match savedProjectsCache
+  const rows = savedProjectsCache
+    .map((p, idx) => ({ p, idx }))
+    .filter(({ p }) => !q || [p.name, p.savedAt, p.activitiesText]
+      .some(v => String(v || '').toLowerCase().includes(q)));
+
+  if (!rows.length) {
+    el.innerHTML = `<p style="color: var(--dark-gray);">No saved projects match "${esc(q)}".</p>`;
+    return;
+  }
+
+  el.innerHTML = '<div class="table-wrapper"><table><tr><th>Saved At</th><th>Project Name</th><th>Budget</th><th>Subawards</th><th>Total Hrs</th><th>FTE %</th><th style="text-align: center;">Actions</th></tr>' +
+    rows.map(({ p, idx }) => {
+      const id = p.id !== undefined ? p.id : idx;
+      const budgetVal = Number(p.budget) || 0;
+      const totalHrs = p.totalHours || p.results?.totalHours || 0;
+      const ftePct = p.ftePercent || p.results?.ftePercent || 0;
+      return `<tr>
+        <td>${esc(p.savedAt)}</td>
+        <td><strong>${esc(p.name)}</strong></td>
+        <td>$${budgetVal.toLocaleString()}</td>
+        <td>${esc(p.subawards)}</td>
+        <td>${totalHrs.toFixed(1)}</td>
+        <td>${ftePct.toFixed(1)}%</td>
+        <td style="text-align: center; white-space: nowrap;">
+          <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8em; margin-right: 4px;" onclick="loadProject(${id})">Load</button>
+          <button class="btn-danger" style="padding: 4px 10px; font-size: 0.8em;" onclick="deleteProject(${id}, ${esc(JSON.stringify(p.name))})">Delete</button>
+        </td>
+      </tr>`;
+    }).join('') + '</table></div>';
 }
 
 function loadProject(id) {

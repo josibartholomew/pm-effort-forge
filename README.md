@@ -58,7 +58,9 @@ The first time it runs, if the `Activities` or `Settings` tab is missing, the ca
 |-----|---------|
 | `Activities` | `id`, `name`, `description`, `hours`, `unit`, `timesPerYear` |
 | `Settings` | `key`, `value` |
-| `Projects` | `Saved`, `Project`, `Budget`, `Subawards`, `Activities`, `Base hrs/yr`, `Multiplier`, `Total hrs/yr`, `FTE %`, `Student hrs/wk` |
+| `Projects` | `Saved`, `Project`, `Budget`, `Subawards`, `Activities`, `Base hrs/yr`, `Multiplier`, `Total hrs/yr`, `FTE %`, `Student hrs/wk`, `Customizations` |
+
+`Customizations` holds the project's activity changes and selected activity IDs as JSON. Projects tabs created before this column existed get it added the next time a project is saved.
 
 Saving admin changes **rewrites** the `Activities` and `Settings` tabs completely. Any extra columns or notes you add there will be removed.
 
@@ -70,6 +72,20 @@ Saving admin changes **rewrites** the `Activities` and `Settings` tabs completel
 - **GitHub Pages**: in the repo go to **Settings → Pages**, set the source to the branch you want and the `/ (root)` folder. The calculator is served at `https://<user>.github.io/pm-effort-forge/`.
 
 In this mode everything stays in the current browser. Use **Export Config (JSON)** or **Download CSV** on the Admin tab to back up or share your activity catalog.
+
+## Project-specific activities
+
+On the **Effort Calculator** tab, turn on **Customize activities for this project** to change activities for the current project only:
+
+- Edit any activity's hours, unit, or times/yr. Changed activities are marked **Adjusted** and can be reset to the catalog values.
+- **Set all selected to … hrs per …** applies one value to every selected activity (for example, 1 hr/week).
+- **+ Add activity to this project** adds an activity that exists only in this project (marked **Added**).
+
+These changes are saved with the project (in the `Customizations` column, or browser storage in standalone mode) and never change the shared `Activities` tab. Activities you didn't change keep following the catalog, so later admin edits still apply to them.
+
+### Saving and project names
+
+Project names are unique. Saving a project you loaded from **Saved Projects** updates it in place, including when you rename it. Saving a new project, or renaming one, with a name another saved project already uses is blocked with a message asking for a different name. **Reset Calculator** starts a new project.
 
 ## How the calculation works
 

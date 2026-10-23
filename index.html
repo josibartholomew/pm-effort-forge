@@ -217,6 +217,89 @@
     text-transform: uppercase;
   }
 
+  .project-tools {
+    margin-bottom: 12px;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+  }
+
+  .project-tools .customize-toggle { font-weight: 600; cursor: pointer; }
+  .project-tools .customize-toggle input { margin-right: 8px; transform: scale(1.2); }
+
+  .project-tools-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .project-tools-row button { padding: 6px 12px; font-size: 0.85em; }
+
+  .expected-edit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .expected-edit input[type=number] { width: 70px; padding: 6px; }
+  .expected-edit select { width: auto; padding: 6px; }
+
+  .activity-edit input[type=text] { margin-top: 4px; padding: 6px 8px; }
+
+  .badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background-color: #ffe6e6;
+    color: var(--dark-red);
+    font-size: 0.72em;
+    font-weight: 700;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+
+  .unsaved-notice {
+    align-self: center;
+    color: var(--dark-red);
+    font-weight: 600;
+    font-size: 0.9em;
+  }
+
+  .tab-button.has-unsaved::after { content: ' •'; color: var(--primary-red); }
+
+  [hidden] { display: none !important; }
+
+  .draft-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+    padding: 14px 20px;
+    background-color: #ffe6e6;
+    border-left: 4px solid var(--primary-red);
+    border-radius: 6px;
+  }
+
+  .draft-banner span { flex: 1; min-width: 220px; }
+  .draft-banner button { padding: 6px 12px; font-size: 0.85em; }
+
+  .link-button {
+    background: none;
+    color: var(--dark-red);
+    padding: 2px 0;
+    margin-top: 4px;
+    font-size: 0.8em;
+    font-weight: 600;
+    text-decoration: underline;
+  }
+
+  .link-button:hover { background: none; color: var(--black); }
+
   .header-actions { margin-left: auto; }
 
   .source-option {
@@ -488,6 +571,14 @@
 
   .pr-act { font-weight: 600; }
 
+  .pr-tag {
+    margin-left: 6px;
+    color: #990000;
+    font-size: 0.75em;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
   .pr-desc {
     font-size: 8pt;
     color: #666666;
@@ -612,6 +703,7 @@
 
   <!-- TAB 1: CALCULATOR -->
   <div id="tab-calculator" class="tab-content active" role="tabpanel" aria-labelledby="btn-tab-calculator">
+    <div id="draftBanner" class="draft-banner" role="status" hidden></div>
     <section>
       <h2>Project Details</h2>
       <div class="input-grid">
@@ -629,6 +721,7 @@
         </div>
       </div>
       
+      <div id="projectActivityTools" class="project-tools"></div>
       <div id="userActivities"></div>
       
       <div class="button-group">
@@ -644,6 +737,7 @@
       <div class="button-group">
         <button id="btnSaveProject" onclick="saveProject()">Save Project</button>
         <button class="btn-secondary" onclick="exportPdf()">🖨️ Print / Export PDF Summary</button>
+        <span id="unsavedNotice" class="unsaved-notice" hidden>Unsaved changes</span>
       </div>
     </section>
   </div>
@@ -876,9 +970,17 @@ function annualHours(a, s) {
   return h;
 }
 
+// The catalog with this project's overrides applied, followed by its project-only activities.
+function effectiveActivities(cfg, project) {
+  const overrides = project.activityOverrides || {};
+  return cfg.activities
+    .map(a => overrides[a.id] ? { ...a, ...overrides[a.id], customized: true } : a)
+    .concat((project.customActivities || []).map(a => ({ ...a, custom: true })));
+}
+
 function calculate(cfg, project) {
   const s = cfg.settings;
-  const chosen = cfg.activities.filter(a => project.selected.includes(a.id));
+  const chosen = effectiveActivities(cfg, project).filter(a => project.selected.includes(a.id));
   const baseHours = chosen.reduce((sum, a) => sum + annualHours(a, s), 0);
   const budget = Math.max(0, Number(project.budget) || 0);
   const subawards = Math.max(0, Number(project.subawards) || 0);
@@ -937,7 +1039,18 @@ const store = IS_GAS ? {
   listProjects: () => gasCall('getSavedProjects'),
   deleteProject: id => gasCall('deleteSavedProject', id)
 } : {
-  saveProject: async p => lsSet(PROJECTS_KEY, (lsGet(PROJECTS_KEY) || []).concat([p])),
+  saveProject: async p => {
+    const { originalName, ...project } = p;
+    const list = lsGet(PROJECTS_KEY) || [];
+    const original = originalName === null || originalName === undefined ? null : nameKey(originalName);
+    let idx = -1;
+    if (original !== null) {
+      for (let i = list.length - 1; i >= 0; i--) if (nameKey(list[i].name) === original) { idx = i; break; }
+    }
+    if (idx >= 0) list[idx] = project;
+    else list.push(project);
+    lsSet(PROJECTS_KEY, list);
+  },
   listProjects: async () => lsGet(PROJECTS_KEY) || [],
   deleteProject: async targetId => {
     let list = lsGet(PROJECTS_KEY) || [];
@@ -951,6 +1064,116 @@ store.saveConfig = c => configStores[source].save(c);
 let config = null;
 let selected = [];
 let savedProjectsCache = [];
+
+// Project-specific activity changes. They are saved with the project, never to the catalog.
+const OVERRIDE_FIELDS = ['hours', 'unit', 'timesPerYear'];
+let projectOverrides = {};   // catalog activity id -> { hours, unit, timesPerYear }
+let customActivities = [];   // activities added only to this project
+let customizeMode = false;
+// Name of the saved project currently loaded. Saving it again updates that project.
+let loadedProjectName = null;
+
+function nameKey(name) { return String(name || '').trim().toLowerCase(); }
+
+// ---------- Unsaved changes ----------
+// The calculator has unsaved changes when it differs from the last saved or loaded project.
+// Unsaved work is also kept as a browser draft, so closing the Sheets dialog doesn't lose it.
+const DRAFT_KEY = 'pmEffort.draft';
+let savedSnapshot = null;
+let pendingDraft = null;   // draft found on startup, waiting for Restore or Discard
+
+function projectSnapshot(p = currentProject()) {
+  const o = p.activityOverrides || {};
+  return JSON.stringify({
+    name: p.name, budget: p.budget, subawards: p.subawards,
+    selected: p.selected.map(String).sort(),
+    overrides: Object.keys(o).sort().map(k => [k, OVERRIDE_FIELDS.map(f => o[k][f] ?? '')]),
+    customActivities: p.customActivities || []
+  });
+}
+
+function isDirty() { return savedSnapshot !== null && projectSnapshot() !== savedSnapshot; }
+
+function markClean(snapshot = projectSnapshot()) {
+  savedSnapshot = snapshot;
+  updateUnsavedState();
+}
+
+function updateUnsavedState() {
+  if (!config) return;
+  const dirty = isDirty();
+  const notice = document.getElementById('unsavedNotice');
+  if (notice) notice.hidden = !dirty;
+  const tab = document.getElementById('btn-tab-calculator');
+  if (tab) tab.classList.toggle('has-unsaved', dirty);
+  try {
+    if (dirty) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ project: currentProject(), loadedProjectName, savedSnapshot, at: Date.now() }));
+      if (pendingDraft) { pendingDraft = null; renderDraftBanner(); }
+    } else if (!pendingDraft) {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+  } catch (e) { /* drafts are best-effort */ }
+}
+
+// Ask before an action that would replace unsaved changes.
+function confirmDiscard() {
+  if (!isDirty()) return true;
+  const name = currentProject().name;
+  return confirm(`"${name}" has unsaved changes. Discard them?`);
+}
+
+function renderDraftBanner() {
+  const el = document.getElementById('draftBanner');
+  if (!el) return;
+  el.hidden = !pendingDraft;
+  if (!pendingDraft) { el.innerHTML = ''; return; }
+  const when = new Date(pendingDraft.at).toLocaleString();
+  el.innerHTML = `<span>You have unsaved changes to <strong>${esc(pendingDraft.project.name)}</strong> from ${esc(when)}.</span>
+    <button onclick="restoreDraft()">Restore</button>
+    <button class="btn-secondary" onclick="discardDraft()">Discard</button>`;
+}
+
+function restoreDraft() {
+  const d = pendingDraft;
+  if (!d) return;
+  pendingDraft = null;
+  const p = d.project;
+  document.getElementById('projName').value = p.name || '';
+  document.getElementById('projBudget').value = p.budget || 0;
+  document.getElementById('projSubawards').value = p.subawards || 0;
+  projectOverrides = copy(p.activityOverrides || {});
+  customActivities = copy(p.customActivities || []);
+  loadedProjectName = d.loadedProjectName ?? null;
+  const ids = projectActivities().map(a => a.id);
+  selected = (p.selected || []).filter(id => ids.includes(id));
+  savedSnapshot = d.savedSnapshot;
+  renderDraftBanner();
+  renderUser();
+  renderResults();
+  setStatus(`Restored unsaved changes to "${p.name}". Remember to save.`);
+}
+
+function discardDraft() {
+  pendingDraft = null;
+  try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* drafts are best-effort */ }
+  renderDraftBanner();
+}
+
+window.addEventListener('beforeunload', e => {
+  if (!isDirty()) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
+
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    // Commit a field that is still being edited (activity edits apply on change).
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    saveProject();
+  }
+});
 
 function copy(x) { return JSON.parse(JSON.stringify(x)); }
 function esc(x) {
@@ -988,6 +1211,7 @@ function sourceStatus() {
 }
 
 async function loadConfig() {
+  const wasClean = !isDirty();
   setStatus('Loading...');
   try {
     let c = await store.loadConfig();
@@ -999,6 +1223,7 @@ async function loadConfig() {
     selected = config.activities.map(a => a.id);
     setStatus(sourceStatus());
     renderAll();
+    if (wasClean) markClean();
   } catch (e) {
     setStatus('Error loading data: ' + e);
   }
@@ -1007,12 +1232,14 @@ async function loadConfig() {
 
 async function init() {
   initTooltips();
+  try { pendingDraft = JSON.parse(localStorage.getItem(DRAFT_KEY)); } catch (e) { pendingDraft = null; }
   if (IS_GAS) {
     const jsonTools = document.getElementById('jsonTools');
     if (jsonTools) jsonTools.style.display = 'none';
   }
   await loadConfig();
   await renderSaved();
+  renderDraftBanner();
 
   ['projName', 'projBudget', 'projSubawards'].forEach(id => {
     const el = document.getElementById(id);
@@ -1022,17 +1249,21 @@ async function init() {
 
 function currentProject() {
   return {
-    name: document.getElementById('projName').value || 'Untitled Project',
+    name: document.getElementById('projName').value.trim() || 'Untitled Project',
     budget: Math.max(0, Number(document.getElementById('projBudget').value) || 0),
     subawards: Math.max(0, Number(document.getElementById('projSubawards').value) || 0),
-    selected: selected.slice()
+    selected: selected.slice(),
+    activityOverrides: copy(projectOverrides),
+    customActivities: copy(customActivities)
   };
 }
+
+function projectActivities() { return effectiveActivities(config, currentProject()); }
 
 function renderAll() { renderUser(); renderAdmin(); renderResults(); }
 
 function toggle(i, on) {
-  const act = config.activities[i];
+  const act = projectActivities()[i];
   if (!act) return;
   const id = act.id;
   selected = on ? (selected.includes(id) ? selected : selected.concat([id])) : selected.filter(x => x !== id);
@@ -1045,31 +1276,126 @@ function toggle(i, on) {
 }
 
 function selectAll(on) {
-  selected = on ? config.activities.map(a => a.id) : [];
-  renderUser(); 
+  selected = on ? projectActivities().map(a => a.id) : [];
+  renderUser();
   renderResults();
+}
+
+// ---------- Project-specific activities ----------
+function setCustomizeMode(on) {
+  customizeMode = on;
+  renderUser();
+}
+
+// Catalog activities store only the fields that differ from the catalog.
+function setActivityField(a, field, value) {
+  if (a.custom) {
+    const c = customActivities.find(x => x.id === a.id);
+    if (c) c[field] = value;
+    return;
+  }
+  const base = config.activities.find(x => x.id === a.id);
+  if (!base || !OVERRIDE_FIELDS.includes(field)) return;
+  const o = { ...projectOverrides[a.id], [field]: value };
+  Object.keys(o).forEach(k => { if (String(o[k] ?? '') === String(base[k] ?? '')) delete o[k]; });
+  if (Object.keys(o).length) projectOverrides[a.id] = o;
+  else delete projectOverrides[a.id];
+}
+
+function editProjectActivity(i, field, value) {
+  const a = projectActivities()[i];
+  if (!a) return;
+  if (field === 'hours' || field === 'timesPerYear') value = value === '' ? '' : Number(value);
+  setActivityField(a, field, value);
+  renderUser();
+  renderResults();
+}
+
+function resetProjectActivity(i) {
+  const a = projectActivities()[i];
+  if (!a) return;
+  delete projectOverrides[a.id];
+  renderUser();
+  renderResults();
+}
+
+function addCustomActivity() {
+  const id = 'custom_' + Date.now().toString(36);
+  customActivities.push({ id, name: 'New project activity', description: '', hours: 1, unit: 'week', timesPerYear: '' });
+  selected.push(id);
+  renderUser();
+  renderResults();
+}
+
+function removeCustomActivity(i) {
+  const a = projectActivities()[i];
+  if (!a || !a.custom) return;
+  customActivities = customActivities.filter(c => c.id !== a.id);
+  selected = selected.filter(x => x !== a.id);
+  renderUser();
+  renderResults();
+}
+
+function clearProjectCustomizations() {
+  if (!confirm('Remove all project-specific changes and added activities for this project?')) return;
+  const customIds = customActivities.map(c => c.id);
+  selected = selected.filter(id => !customIds.includes(id));
+  projectOverrides = {};
+  customActivities = [];
+  renderUser();
+  renderResults();
+}
+
+function renderProjectTools() {
+  const changes = Object.keys(projectOverrides).length + customActivities.length;
+  document.getElementById('projectActivityTools').innerHTML = `
+    <label class="customize-toggle"><input type="checkbox" ${customizeMode ? 'checked' : ''} onchange="setCustomizeMode(this.checked)">Customize activities for this project</label>
+    ${changes ? `<span class="source-note">${changes} project-specific ${changes === 1 ? 'change' : 'changes'}</span>` : ''}
+    ${customizeMode && changes ? `<div class="project-tools-row">
+      <button class="btn-secondary" onclick="clearProjectCustomizations()">Reset all to catalog</button>
+    </div>` : ''}`;
 }
 
 function renderUser() {
   const s = config.settings;
+  renderProjectTools();
   document.getElementById('userActivities').innerHTML =
     '<div class="table-wrapper"><table><tr><th scope="col" class="checkbox-col" style="width: 45px; text-align: center;">✓</th><th scope="col" style="width: 60%;">Activity & Description</th><th scope="col" style="width: 25%;">Expected</th><th scope="col" style="width: 15%;">Hours/yr</th></tr>' +
-    config.activities.map((a, i) => {
+    projectActivities().map((a, i) => {
       const isSelected = selected.includes(a.id);
+      const badge = a.custom ? '<span class="badge">Added</span>' : a.customized ? '<span class="badge">Adjusted</span>' : '';
+      const activityCell = customizeMode && a.custom
+        ? `<div class="activity-edit">
+            <input type="text" aria-label="Activity Name" value="${esc(a.name)}" onchange="editProjectActivity(${i}, 'name', this.value)">
+            <input type="text" aria-label="Activity Description" value="${esc(a.description || '')}" onchange="editProjectActivity(${i}, 'description', this.value)" placeholder="Activity description">
+          </div>`
+        : `<strong style="font-size: 1rem; color: var(--black);">${esc(a.name)}</strong>${badge}
+          ${a.description ? `<span class="activity-desc">${esc(a.description)}</span>` : ''}`;
+      const expectedCell = customizeMode
+        ? `<div class="expected-edit">
+            <input type="number" aria-label="Hours for ${esc(a.name)}" step="0.5" min="0" value="${esc(a.hours)}" onchange="editProjectActivity(${i}, 'hours', this.value)">
+            <span>hrs/</span>
+            <select aria-label="Unit for ${esc(a.name)}" onchange="editProjectActivity(${i}, 'unit', this.value)">
+              ${UNITS.map(u => `<option ${a.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
+            </select>
+            ${a.unit === 'each' ? `<span>×</span><input type="number" aria-label="Times per year for ${esc(a.name)}" min="0" value="${esc(a.timesPerYear)}" onchange="editProjectActivity(${i}, 'timesPerYear', this.value)"><span>/yr</span>` : ''}
+          </div>
+          ${a.customized ? `<button type="button" class="link-button" onclick="resetProjectActivity(${i})">Reset to catalog</button>` : ''}
+          ${a.custom ? `<button type="button" class="link-button" onclick="removeCustomActivity(${i})">Remove</button>` : ''}`
+        : `${esc(a.hours)} hrs/${a.unit === 'each' ? 'each x ' + esc(a.timesPerYear) + '/yr' : esc(a.unit)}`;
       return `<tr id="activity-row-${i}" class="${isSelected ? 'selected-row' : 'unselected-row'}">
         <td class="checkbox-col" style="text-align: center;"><input type="checkbox" aria-label="Select ${esc(a.name)}" style="transform: scale(1.3);" ${isSelected ? 'checked' : ''} onchange="toggle(${i}, this.checked)"></td>
-        <td>
-          <strong style="font-size: 1rem; color: var(--black);">${esc(a.name)}</strong>
-          ${a.description ? `<span class="activity-desc">${esc(a.description)}</span>` : ''}
-        </td>
-        <td>${esc(a.hours)} hrs/${a.unit === 'each' ? 'each x ' + esc(a.timesPerYear) + '/yr' : esc(a.unit)}</td>
+        <td>${activityCell}</td>
+        <td>${expectedCell}</td>
         <td style="font-weight: 600;">${annualHours(a, s).toFixed(1)}</td>
       </tr>`;
-    }).join('') + '</table></div>';
+    }).join('') + '</table></div>' +
+    (customizeMode ? '<div class="button-group"><button class="btn-secondary" onclick="addCustomActivity()">+ Add activity to this project</button></div>' : '');
 }
 
 function renderResults() {
   const r = calculate(config, currentProject());
+  updateUnsavedState();
 
   document.getElementById('results').innerHTML = `<div class="table-wrapper"><table>
     <tr>
@@ -1172,6 +1498,7 @@ async function renderSaved() {
 }
 
 function loadProject(id) {
+  if (!confirmDiscard()) return;
   const p = savedProjectsCache.find((proj, idx) => (proj.id !== undefined ? proj.id : idx) === id || proj.rowIndex === id);
   if (!p) {
     alert('Could not find saved project details.');
@@ -1183,7 +1510,32 @@ function loadProject(id) {
   document.getElementById('projBudget').value = p.budget || 0;
   document.getElementById('projSubawards').value = p.subawards || 0;
 
-  // Gather selected activities
+  projectOverrides = copy(p.activityOverrides || {});
+  customActivities = copy(p.customActivities || []);
+  customizeMode = false;
+  loadedProjectName = p.name || '';
+  const acts = projectActivities();
+
+  // Projects saved with exact activity IDs restore them directly.
+  if (Array.isArray(p.selected)) {
+    const ids = p.selected.map(String);
+    selected = acts.filter(a => ids.includes(String(a.id))).map(a => a.id);
+  } else {
+    selected = matchLegacySelection(p, acts);
+  }
+
+  renderUser();
+  renderResults();
+  markClean();
+
+  const calcBtn = document.getElementById('btn-tab-calculator');
+  if (calcBtn) switchTab('tab-calculator', calcBtn);
+
+  setStatus('Loaded project "' + (p.name || 'Untitled') + '".');
+}
+
+// Older Sheet rows only stored activity names, so match those against the catalog.
+function matchLegacySelection(p, acts) {
   const rawList = [];
   if (Array.isArray(p.selected)) rawList.push(...p.selected);
   if (Array.isArray(p.selectedIds)) rawList.push(...p.selectedIds);
@@ -1198,73 +1550,71 @@ function loadProject(id) {
   const normalizedRawList = rawList.map(item => String(item).trim().toLowerCase());
   const rawText = String(p.activitiesText || '').toLowerCase();
 
-  // Match against config.activities catalog
-  selected = config.activities
+  return acts
     .filter(act => {
       const actId = String(act.id || '').trim().toLowerCase();
       const actName = String(act.name || '').trim().toLowerCase();
-      return normalizedRawList.includes(actId) || 
-             normalizedRawList.includes(actName) || 
+      return normalizedRawList.includes(actId) ||
+             normalizedRawList.includes(actName) ||
              (actName && rawText.includes(actName));
     })
     .map(act => act.id);
-
-  renderUser();
-  renderResults();
-  
-  const calcBtn = document.getElementById('btn-tab-calculator');
-  if (calcBtn) switchTab('tab-calculator', calcBtn);
-
-  setStatus('Loaded project "' + (p.name || 'Untitled') + '".');
 }
 
 function resetProjectForm() {
+  if (!confirmDiscard()) return;
   document.getElementById('projName').value = 'Test project';
   document.getElementById('projBudget').value = 250000;
   document.getElementById('projSubawards').value = 1;
+  projectOverrides = {};
+  customActivities = [];
+  customizeMode = false;
+  loadedProjectName = null;
   selected = config.activities.map(a => a.id);
   renderUser();
   renderResults();
-  // Update UI & switch tab
-  renderUser();
-  renderResults();
-  
-  const calcBtn = document.getElementById('btn-tab-calculator');
-  if (calcBtn) switchTab('tab-calculator', calcBtn);
-
-  setStatus('Loaded project "' + (p.name || 'Untitled') + '".');
-}
-
-function resetProjectForm() {
-  document.getElementById('projName').value = 'Test project';
-  document.getElementById('projBudget').value = 250000;
-  document.getElementById('projSubawards').value = 1;
-  selected = config.activities.map(a => a.id);
-  renderUser();
-  renderResults();
+  markClean();
   setStatus('Reset project inputs to defaults.');
 }
 
+// A name is taken if another saved project uses it. Resaving the loaded project is always allowed.
+function projectNameTaken(name, list) {
+  const key = nameKey(name);
+  if (loadedProjectName !== null && key === nameKey(loadedProjectName)) return false;
+  return list.some(sp => nameKey(sp.name) === key);
+}
+
 async function saveProject() {
+  const p = currentProject();
+  if (projectNameTaken(p.name, savedProjectsCache)) {
+    const msg = `A project named "${p.name}" already exists. Choose a different name, or load that project from Saved Projects to edit it.`;
+    setStatus(msg);
+    alert(msg);
+    return;
+  }
+
   const btn = document.getElementById('btnSaveProject');
   if (btn) btn.disabled = true;
-  const p = currentProject();
   const results = calculate(config, p);
   const chosenActs = results.chosenActivities || [];
   const names = chosenActs.map(a => a.name);
   const ids = chosenActs.map(a => a.id);
-  
+
   setStatus('Saving project...');
   try {
     await store.saveProject({
       ...p,
+      originalName: loadedProjectName,
       selectedNames: names,
       selectedIds: ids,
       activities: names,
       results,
       savedAt: new Date().toLocaleString()
     });
-    setStatus('Project saved successfully.');
+    const updated = loadedProjectName !== null;
+    loadedProjectName = p.name;
+    markClean(projectSnapshot(p));
+    setStatus(updated ? 'Project updated successfully.' : 'Project saved successfully.');
     await renderSaved();
   } catch (e) { 
     setStatus('Error saving project: ' + (e.message || e)); 
@@ -1282,6 +1632,7 @@ async function deleteProject(id, projName) {
   setStatus('Deleting project...');
   try {
     await store.deleteProject(id);
+    if (loadedProjectName !== null && nameKey(projName) === nameKey(loadedProjectName)) loadedProjectName = null;
     setStatus('Project deleted.');
     await renderSaved();
   } catch (e) {
@@ -1298,19 +1649,23 @@ function editActivity(i, field, value) {
 }
 
 function addActivity() {
+  const wasClean = !isDirty();
   const id = 'a' + Date.now();
   config.activities.push({ id, name: 'New activity', description: '', hours: 1, unit: 'week', timesPerYear: '' });
   selected.push(id);
   renderAll();
+  if (wasClean) markClean();
 }
 
 function removeActivity(i) {
+  const wasClean = !isDirty();
   const act = config.activities[i];
   if (act) {
     const id = act.id;
     config.activities.splice(i, 1);
     selected = selected.filter(x => x !== id);
     renderAll();
+    if (wasClean) markClean();
   }
 }
 
@@ -1335,9 +1690,11 @@ async function saveAdmin() {
 
 async function resetDefaults() {
   if (!confirm('Replace all activities and settings with default values?')) return;
+  const wasClean = !isDirty();
   config = normalize(copy(DEFAULT_CONFIG));
   selected = config.activities.map(a => a.id);
   renderAll();
+  if (wasClean) markClean();
   await saveAdmin();
 }
 
@@ -1356,9 +1713,11 @@ function importConfig(input) {
     try {
       const c = JSON.parse(text);
       if (!Array.isArray(c.activities) || !c.settings) throw new Error('Missing activities or settings structure');
+      const wasClean = !isDirty();
       config = normalize(c);
       selected = config.activities.map(a => a.id);
       renderAll();
+      if (wasClean) markClean();
       await saveAdmin();
       setStatus('Config imported successfully.');
     } catch (e) { alert('Could not import config: ' + e.message); }
@@ -1487,9 +1846,11 @@ function uploadCsv(input) {
       source = 'csv';
       try { localStorage.setItem(SOURCE_KEY, JSON.stringify('csv')); } catch (e) { /* session only */ }
       await store.saveConfig(c);
+      const wasClean = !isDirty();
       config = c;
       selected = config.activities.map(a => a.id);
       renderAll();
+      if (wasClean) markClean();
       renderSourcePanel();
       setStatus(`Loaded ${config.activities.length} activities from ${file.name}. ` + sourceStatus());
     } catch (e) { alert('Could not import CSV: ' + e.message); }
@@ -1534,7 +1895,7 @@ function renderPrintReport() {
     const hrs = annualHours(a, s);
     const share = r.baseHours > 0 ? (hrs / r.baseHours) * 100 : 0;
     return `<tr>
-      <td><div class="pr-act">${esc(a.name)}</div>${a.description ? `<div class="pr-desc">${esc(a.description)}</div>` : ''}</td>
+      <td><div class="pr-act">${esc(a.name)}${a.custom ? '<span class="pr-tag">Added</span>' : a.customized ? '<span class="pr-tag">Adjusted</span>' : ''}</div>${a.description ? `<div class="pr-desc">${esc(a.description)}</div>` : ''}</td>
       <td class="pr-nowrap">${esc(cadenceLabel(a, s))}</td>
       <td class="pr-num">${fmtNum(hrs)}</td>
       <td class="pr-share"><div class="pr-bar"><span style="width: ${share.toFixed(1)}%;"></span></div><div class="pr-pct">${fmtNum(share, 0)}% of base</div></td>
@@ -1574,7 +1935,7 @@ function renderPrintReport() {
       <dl class="pr-inputs">
         <div><dt>Annual budget</dt><dd>$${p.budget.toLocaleString()}</dd></div>
         <div><dt>Subawards</dt><dd>${p.subawards}</dd></div>
-        <div><dt>Activities</dt><dd>${r.chosenActivities.length} of ${config.activities.length}</dd></div>
+        <div><dt>Activities</dt><dd>${r.chosenActivities.length} of ${effectiveActivities(config, p).length}</dd></div>
         <div><dt>Complexity multiplier</dt><dd>${r.multiplier.toFixed(2)}×</dd></div>
       </dl>
     </div>

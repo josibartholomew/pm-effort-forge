@@ -6,8 +6,9 @@ const ADMIN_PASSWORD = 'admin123';
 const ACTIVITY_HEADERS = ['id', 'name', 'description', 'hours', 'unit', 'timesPerYear'];
 const PROJECT_HEADERS = [
   'Saved', 'Project', 'Budget', 'Subawards', 'Activities',
-  'Base hrs/yr', 'Multiplier', 'Total hrs/yr', 'FTE %', 'Student hrs/wk'
+  'Base hrs/yr', 'Multiplier', 'Total hrs/yr', 'FTE %', 'Student hrs/wk', 'Customizations'
 ];
+const CUSTOMIZATIONS_COL = PROJECT_HEADERS.indexOf('Customizations');
 
 /**
  * Server-side password verification (runs strictly on Google servers)
@@ -22,6 +23,10 @@ function parseNum_(val) {
   const str = String(val).replace(/[$,%\s]/g, '');
   const num = parseFloat(str);
   return isNaN(num) ? 0 : num;
+}
+
+function nameKey_(name) {
+  return String(name || '').trim().toLowerCase();
 }
 
 function onOpen() {
@@ -101,8 +106,13 @@ function saveProject(p) {
     sheet = ss.insertSheet('Projects');
     sheet.appendRow(PROJECT_HEADERS);
     sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, PROJECT_HEADERS.length).setFontWeight('bold').setBackground('#DB0000').setFontColor('#FFFFFF');
   }
+  // Older Projects tabs were created before the Customizations column existed.
+  const headerRange = sheet.getRange(1, 1, 1, PROJECT_HEADERS.length);
+  if (headerRange.getValues()[0][CUSTOMIZATIONS_COL] !== PROJECT_HEADERS[CUSTOMIZATIONS_COL]) {
+    headerRange.setValues([PROJECT_HEADERS]);
+  }
+  headerRange.setFontWeight('bold').setBackground('#DB0000').setFontColor('#FFFFFF');
 
   const r = p.results || {};
 
@@ -118,6 +128,25 @@ function saveProject(p) {
   }
 
   const name = String(p.name || 'Untitled').trim();
+
+  // Resaving the loaded project updates its row; any other project with the same name blocks the save.
+  const data = sheet.getDataRange().getValues();
+  const original = p.originalName === null || p.originalName === undefined ? null : nameKey_(p.originalName);
+  let targetRow = -1;
+  if (original !== null) {
+    for (let i = data.length - 1; i >= 1; i--) {
+      if (nameKey_(data[i][1]) === original) { targetRow = i + 1; break; }
+    }
+  }
+  if (nameKey_(name) !== original && data.slice(1).some(r => nameKey_(r[1]) === nameKey_(name))) {
+    throw new Error('A project named "' + name + '" already exists. Choose a different name.');
+  }
+
+  const customizations = JSON.stringify({
+    selectedIds: Array.isArray(p.selected) ? p.selected : [],
+    activityOverrides: p.activityOverrides || {},
+    customActivities: Array.isArray(p.customActivities) ? p.customActivities : []
+  });
   const budget = parseNum_(p.budget);
   const subawards = parseNum_(p.subawards);
   const baseHours = parseNum_(r.baseHours);
@@ -127,17 +156,22 @@ function saveProject(p) {
   const fteDecimal = ftePercent > 1 ? ftePercent / 100 : ftePercent;
   const studentHours = parseNum_(r.studentHoursPerWeek);
 
-  sheet.appendRow([
+  const row = [
     new Date(), name, budget, subawards, actStr,
-    baseHours, multiplier, totalHours, fteDecimal, studentHours
-  ]);
+    baseHours, multiplier, totalHours, fteDecimal, studentHours, customizations
+  ];
+  if (targetRow > 0) {
+    sheet.getRange(targetRow, 1, 1, row.length).setValues([row]);
+  } else {
+    sheet.appendRow(row);
+    targetRow = sheet.getLastRow();
+  }
 
-  const lastRow = sheet.getLastRow();
-  sheet.getRange(lastRow, 1).setNumberFormat('yyyy-mm-dd hh:mm');
-  sheet.getRange(lastRow, 3).setNumberFormat('$#,##0');
-  sheet.getRange(lastRow, 6, 1, 3).setNumberFormat('0.0');
-  sheet.getRange(lastRow, 9).setNumberFormat('0.0%');
-  sheet.getRange(lastRow, 10).setNumberFormat('0.0');
+  sheet.getRange(targetRow, 1).setNumberFormat('yyyy-mm-dd hh:mm');
+  sheet.getRange(targetRow, 3).setNumberFormat('$#,##0');
+  sheet.getRange(targetRow, 6, 1, 3).setNumberFormat('0.0');
+  sheet.getRange(targetRow, 9).setNumberFormat('0.0%');
+  sheet.getRange(targetRow, 10).setNumberFormat('0.0');
 
   return true;
 }
@@ -176,6 +210,9 @@ function getSavedProjects() {
       return nameToIdMap[lower] || item;
     });
 
+    let custom = null;
+    try { custom = r[CUSTOMIZATIONS_COL] ? JSON.parse(r[CUSTOMIZATIONS_COL]) : null; } catch (e) { custom = null; }
+
     let fte = parseNum_(r[8]);
     if (fte > 0 && fte <= 1) {
       fte = fte * 100;
@@ -197,7 +234,11 @@ function getSavedProjects() {
       multiplier: parseNum_(r[6]) || 1,
       totalHours: parseNum_(r[7]),
       ftePercent: fte,
-      studentHoursPerWeek: parseNum_(r[9])
+      studentHoursPerWeek: parseNum_(r[9]),
+      // Only rows saved with customizations carry exact IDs; older rows fall back to name matching.
+      selected: custom && Array.isArray(custom.selectedIds) ? custom.selectedIds : undefined,
+      activityOverrides: (custom && custom.activityOverrides) || {},
+      customActivities: (custom && custom.customActivities) || []
     };
   });
 

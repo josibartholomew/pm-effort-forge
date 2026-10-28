@@ -1,32 +1,212 @@
-# pm-effort-forge
+# PM Effort Calculator
 
-A project management effort calculator for sponsored projects. You pick the PM activities a project needs, enter its budget and number of subawards, and the calculator estimates:
+A tool for estimating how much project management time a sponsored project (such as a grant) will need.
 
-- **Total annualized hours**: the base activity hours times a complexity multiplier
-- **FTE %**: total hours as a share of a full-time year
-- **Student hours/week**: the weekly hours a student worker would need to cover the effort
+You tell the calculator:
 
-The whole app is one page (`index.html`). It runs in two modes:
+- which project management tasks the project needs (for example, budget monitoring or quarterly reports),
+- the project's annual budget, and
+- how many subawards (partner organizations) it has.
 
-| Mode | Where it runs | Activities & settings | Saved projects |
-|------|---------------|-----------------------|----------------|
-| **Google Sheets** | Apps Script dialog or web app | `Activities` / `Settings` tabs (or an uploaded CSV) | `Projects` tab |
-| **Standalone** | Any static host (e.g. GitHub Pages) or opened locally | Browser storage (localStorage) | Browser storage (localStorage) |
+It then estimates:
 
-The page detects which mode it's in automatically. No server or database is needed.
+- **Total hours per year** spent on project management
+- **FTE %**: how much of one full-time position that is (100% = one person working full time)
+- **Student hours per week**: how many hours a week a student worker would need to cover the work
 
-## Files
+---
 
-| File | Purpose |
-|------|---------|
-| `index.html` | The full calculator: UI, calculations, storage, CSV import/export |
-| `Code.js` | Apps Script backend: Sheet menu, web app entry point, reads/writes the Sheet tabs |
-| `appsscript.json` | Apps Script manifest (V8 runtime, `America/Denver` time zone) |
-| `.clasp.json` / `.claspignore` | Config for pushing the files to Apps Script with [clasp](https://github.com/google/clasp) |
+## Contents
 
-## Setup: Google Sheets version
+1. [Two ways to use it](#two-ways-to-use-it)
+2. [Using the calculator](#using-the-calculator)
+3. [Saved projects](#saved-projects)
+4. [Admin & Settings](#admin--settings)
+5. [How the estimate is calculated](#how-the-estimate-is-calculated)
+6. [Setting it up with Google Sheets](#setting-it-up-with-google-sheets)
+7. [Setting it up as a web page (no Google account needed)](#setting-it-up-as-a-web-page-no-google-account-needed)
+8. [Using a CSV file for the activity list](#using-a-csv-file-for-the-activity-list)
+9. [Making it your own](#making-it-your-own)
+10. [Reference](#reference)
 
-### 1. Push the code with clasp
+---
+
+## Two ways to use it
+
+The calculator can run in two ways. It works out which one it's in automatically.
+
+| | **Google Sheets version** (recommended) | **Web page version** |
+|---|---|---|
+| Where it runs | Inside a Google Sheet, or as a link shared with your Google Workspace | Any web browser, from a file or a website like GitHub Pages |
+| Where saved projects go | A `Projects` tab in the Google Sheet, which everyone shares | Only the browser you saved them in |
+| Admin & Settings tab | Available (password protected) | **Not available**. Use a [CSV file](#using-a-csv-file-for-the-activity-list) to change activities and settings instead |
+| Good for | A team sharing one set of activities and project records | Trying it out, or one person on one computer |
+
+---
+
+## Using the calculator
+
+The **Effort Calculator** tab is where you build an estimate.
+
+1. **Enter the project details**: project name, annual budget, and number of subawards.
+2. **Check the activities the project needs.** Use **Select All** or **Select None** to speed this up.
+3. **Read the results.** The totals update as you go. Hover over the ⓘ icons for an explanation of each number.
+4. Click **Save Project** to keep it, or **🖨️ Print / Export PDF Summary** to print it or save it as a PDF.
+
+**Reset Calculator** clears everything so you can start a new project.
+
+### Adjusting activities for just one project
+
+Sometimes a project needs more or less time on a task than usual. Turn on **Customize activities for this project** to:
+
+- **Change an activity's hours or how often it happens.** Changed activities are labeled **Adjusted**. Click **Reset to catalog** to undo.
+- **Set all selected to … hrs per …** to give every checked activity the same amount of time (for example, 1 hour per week).
+- **+ Add activity to this project** to add a task that only this project needs. It's labeled **Added**.
+
+These changes only affect the current project. They don't change the shared activity list. Activities you didn't change keep up with any future updates an admin makes.
+
+### Don't lose your work
+
+- If you have changes you haven't saved, you'll see **Unsaved changes** next to the Save button and a **•** on the calculator tab.
+- The calculator asks before doing anything that would throw away unsaved changes, and your browser warns you if you try to close the page.
+- If the page is closed anyway, your work is kept in the browser. The next time you open the calculator, it offers to **Restore** or **Discard** those changes.
+
+---
+
+## Saved projects
+
+The **Saved Projects** tab lists every project that's been saved.
+
+- **Search** by project name, date saved, or activity.
+- **Load** opens a project in the calculator so you can review or change it.
+- **Delete** removes it (you'll be asked to confirm).
+
+Every project needs a different name. If you load a project, change it, and save, the existing record is updated (even if you rename it). Saving a *new* project with a name that's already taken is blocked, and you'll be asked to pick another name.
+
+---
+
+## Admin & Settings
+
+The **Admin & Settings** tab controls the shared list of activities and the numbers used in the calculation. It's protected by a password.
+
+> ⚠️ **Change the password before sharing the calculator.** The starting password is `admin123`. See [step 3 of setup](#3-change-the-admin-password).
+
+From this tab you can:
+
+- **Edit the activity list**: names, descriptions, hours, and how often each happens. **+ Add Activity** adds a new one, and **Delete** removes one.
+- **Change the settings** described in [How the estimate is calculated](#settings-you-can-change).
+- **Save Admin Changes** to apply your edits for everyone.
+- **Reset to Defaults** to go back to the original activity list and settings.
+- **Export Config (JSON)** to download a backup of the activity list and settings, and **Import Config** to load one back in.
+
+> Saving admin changes **replaces** the `Activities` and `Settings` tabs in the Google Sheet. Don't add your own notes or extra columns to those two tabs, because they'll be erased.
+
+The Admin tab only works in the Google Sheets version, because the password is checked by Google. In the web page version, use a [CSV file](#using-a-csv-file-for-the-activity-list) instead.
+
+---
+
+## How the estimate is calculated
+
+### Step 1: Hours per year for each activity
+
+Each activity has a number of hours and how often it happens:
+
+| How often | Hours per year | Example |
+|---|---|---|
+| Per week | hours × 52 | 2.5 hrs/week → 130 hrs/year |
+| Per month | hours × 12 | 5.5 hrs/month → 66 hrs/year |
+| Per year | hours | 20 hrs/year → 20 hrs/year |
+| Each (a set number of times a year) | hours × times per year | 6 hrs, 4 times a year → 24 hrs/year |
+
+**Base hours** are the hours per year of all the checked activities added together.
+
+### Step 2: Complexity multiplier
+
+Bigger projects and more partners mean more coordination, so the base hours are increased:
+
+- Start at **1**
+- Add **0.05** for each subaward
+- Add **0.03** for each $100,000 of annual budget
+- The multiplier can't go above **2**
+
+### Step 3: Results
+
+- **Total hours per year** = base hours × multiplier
+- **FTE %** = total hours ÷ 2,080 (one full-time year) × 100
+- **Student hours per week** = total hours ÷ 48 (weeks a student works per year)
+
+### Example
+
+A project with a **$500,000** budget, **2 subawards**, and **300 base hours**:
+
+- Multiplier = 1 + (2 × 0.05) + (5 × 0.03) = **1.25**
+- Total hours = 300 × 1.25 = **375 hours per year**
+- FTE = 375 ÷ 2,080 = **18.0%**
+- Student hours = 375 ÷ 48 = **7.8 hours per week**
+
+### Settings you can change
+
+All of these can be changed on the Admin & Settings tab. The multiplier numbers are starting points. Adjust them to fit your institution.
+
+| Setting | Starting value | What it means |
+|---|---|---|
+| `pmWeeksPerYear` | 52 | Weeks per year used for weekly activities |
+| `studentWeeksPerYear` | 48 | Weeks per year a student worker works |
+| `fullTimeHours` | 2080 | Hours in one full-time year (100% FTE) |
+| `subawardRate` | 0.05 | Amount added to the multiplier for each subaward |
+| `budgetRatePer100k` | 0.03 | Amount added to the multiplier for each $100,000 of budget |
+| `multiplierCap` | 2 | The highest the multiplier can go |
+
+---
+
+## Setting it up with Google Sheets
+
+You don't need to install anything. These steps use your web browser and a Google account.
+
+### 1. Create the Sheet and add the code
+
+1. Create a new Google Sheet. This is where the activity list and saved projects will be stored.
+2. In the Sheet, go to **Extensions → Apps Script**. A code editor opens in a new tab.
+3. You'll see a file called `Code.gs`. Delete everything in it, then copy in the entire contents of [`Code.js`](Code.js) from this project.
+4. Click the **+** next to **Files**, choose **HTML**, and name it `index` (exactly, in lowercase). Delete what's in it and copy in the entire contents of [`index.html`](index.html).
+5. Click the 💾 **Save** icon.
+
+### 2. Open the calculator
+
+1. Go back to your Sheet and reload the page.
+2. A new **PM Effort** menu appears. Choose **PM Effort → Open calculator**.
+3. The first time, Google asks you to approve access to the Sheet. Click through and allow it.
+
+The calculator starts with a built-in list of activities. To store that list in the Sheet so you can edit it there, log in to Admin & Settings and click **Save Admin Changes**. The `Projects` tab is created automatically the first time someone saves a project.
+
+### 3. Change the admin password
+
+1. In the Apps Script editor, open `Code.gs`.
+2. Near the top, find this line:
+
+   ```js
+   const ADMIN_PASSWORD = 'admin123';
+   ```
+
+3. Replace `admin123` with your own password. Keep the quote marks around it.
+4. Click 💾 **Save**.
+
+Anyone who can edit the Apps Script code can see this password, so only give edit access to people you trust.
+
+### 4. (Optional) Share it as a link
+
+To let people use the calculator without opening the Sheet:
+
+1. In the Apps Script editor, click **Deploy → New deployment**.
+2. Click the ⚙️ gear next to **Select type** and choose **Web app**.
+3. Click **Deploy**, then copy the **Web app URL** and share it.
+
+By default only people in your organization's Google Workspace can open the link, and the calculator saves to the Sheet using your account.
+
+<details>
+<summary><strong>For developers: pushing the code with clasp</strong></summary>
+
+If you'd rather manage the code from the command line, the repo is set up for [clasp](https://github.com/google/clasp):
 
 ```bash
 npm install -g @google/clasp
@@ -34,129 +214,96 @@ clasp login
 clasp push
 ```
 
-`.clasp.json` points at the existing Apps Script project. To set up your own copy, replace `scriptId` with your own script's ID, or delete `.clasp.json` and run `clasp create --type sheets`.
+- `.clasp.json` points at the original Apps Script project. Replace its `scriptId` with your own, or delete it and run `clasp create --type sheets`.
+- `.claspignore` makes sure only `Code.js`, `index.html`, and `appsscript.json` get pushed.
+- `appsscript.json` sets the time zone (`America/Denver`) and the web app's access. Web app access is limited to your domain and runs as the person who deployed it.
+- Never commit `.clasprc.json`, which holds your login. It's already listed in `.gitignore`.
 
-`.claspignore` makes sure only `Code.js`, `index.html` and `appsscript.json` get pushed.
+If the script isn't attached to a Sheet, add a **Script Property** named `SPREADSHEET_ID` with the Sheet's ID (under **Project Settings → Script Properties**).
 
-> Never commit `.clasprc.json` (your clasp OAuth credentials). It's already in `.gitignore`.
+</details>
 
-### 2. Connect it to a spreadsheet
+---
 
-- **Bound script** (recommended): create the script from the Sheet (**Extensions → Apps Script**) or with `clasp create --type sheets`. It uses that spreadsheet automatically.
-- **Standalone script**: in the Apps Script editor go to **Project Settings → Script Properties** and add `SPREADSHEET_ID` with the target spreadsheet's ID.
+## Setting it up as a web page (no Google account needed)
 
-### 3. Open the calculator
+`index.html` works on its own:
 
-- **From the Sheet**: reload the spreadsheet and choose **PM Effort → Open calculator**.
-- **As a web app**: in the Apps Script editor choose **Deploy → New deployment → Web app**, then share the URL.
+- **On your computer**: download `index.html` and double-click it to open it in your browser.
+- **On GitHub Pages**: in this repository on GitHub, go to **Settings → Pages**, pick the branch to publish, choose the `/ (root)` folder, and save. After a minute or two, the calculator is available at `https://<your-username>.github.io/pm-effort-forge/`.
 
-The first time it runs, if the `Activities` or `Settings` tab is missing, the calculator loads the built-in defaults. Clicking **Save Admin Changes** writes them to the Sheet. The `Projects` tab is created the first time someone saves a project.
+Keep in mind:
 
-### Sheet tabs
+- Everything is saved **only in the browser you're using**. Other people, other computers, and even other browsers on the same computer won't see your projects.
+- Clearing your browser's history or site data erases your saved projects.
+- The Admin & Settings tab can't be unlocked in this version. To change the activity list or settings, use a CSV file (below).
+
+---
+
+## Using a CSV file for the activity list
+
+A CSV is a simple spreadsheet file. You can create or edit one in Excel or Google Sheets (use **File → Download → .csv** to save it).
+
+Click **Input** at the top of the calculator to choose where the activity list and settings come from:
+
+- **Connected Google Sheet**: uses the `Activities` and `Settings` tabs (Google Sheets version only).
+- **Uploaded CSV**: uses a file you upload. It's stored in your browser only.
+
+**The easiest way to make a CSV:** click **Input → Download CSV** to get the current list, edit it in a spreadsheet program, then use **Upload CSV** to load it back in.
+
+Even when you use a CSV, saved projects still go to the Sheet's `Projects` tab if a Sheet is connected.
+
+### What goes in the file
+
+Each row is either an **activity** or a **setting**:
+
+| type | id | name | description | hours | unit | timesPerYear | value |
+|---|---|---|---|---|---|---|---|
+| activity | reporting | Annual reporting & compliance | Coordinates sponsor reporting... | 20 | year | | |
+| activity | quarterly_report | Quarterly progress report | Drafts quarterly reports... | 6 | each | 4 | |
+| setting | fullTimeHours | | | | | | 2080 |
+
+Rules:
+
+- **unit** must be `week`, `month`, `year`, or `each`. If it's `each`, fill in **timesPerYear**.
+- **id** is a short code for each activity. Each activity needs a different one.
+- For setting rows, put the setting's name in **id** and its number in **value**. The setting name must be one of the six in the [settings table](#settings-you-can-change). Settings you leave out keep their current values.
+- If the file has no **type** column, every row is treated as an activity.
+
+If something in the file isn't right, the calculator tells you which row has the problem.
+
+---
+
+## Making it your own
+
+To adapt the calculator for another institution, make a copy of this project (on GitHub, click **Fork**), then:
+
+1. **Set your own activities and settings.** The easiest way is to set them up in the calculator and upload a CSV or use **Import Config**. To change the built-in starting list, edit the section of `index.html` that begins with `const DEFAULT_CONFIG`.
+2. **Change the logo.** In `index.html`, find the `<img src="...">` line near the top of the page content (it currently shows the Southern Utah University logo) and replace the web address with your own logo's.
+3. **Change the colors.** Near the top of `index.html`, change the values of `--primary-red` and `--dark-red` to your own colors.
+4. **Change the admin password** (see [above](#3-change-the-admin-password)).
+5. Follow the setup steps for Google Sheets or for the web page version.
+
+---
+
+## Reference
+
+### Files in this project
+
+| File | What it is |
+|---|---|
+| `index.html` | The calculator itself: everything you see and click |
+| `Code.js` | The Google Sheets connection: adds the menu, checks the admin password, and reads and writes the Sheet |
+| `appsscript.json` | Google Apps Script settings (time zone, who can open the web app link) |
+| `.clasp.json`, `.claspignore` | Settings for the optional clasp developer tool |
+| `.gitignore` | Tells Git which files never to save to the repository, such as login credentials |
+
+### Google Sheet tabs
 
 | Tab | Columns |
-|-----|---------|
+|---|---|
 | `Activities` | `id`, `name`, `description`, `hours`, `unit`, `timesPerYear` |
 | `Settings` | `key`, `value` |
 | `Projects` | `Saved`, `Project`, `Budget`, `Subawards`, `Activities`, `Base hrs/yr`, `Multiplier`, `Total hrs/yr`, `FTE %`, `Student hrs/wk`, `Customizations` |
 
-`Customizations` holds the project's activity changes and selected activity IDs as JSON. Projects tabs created before this column existed get it added the next time a project is saved.
-
-Saving admin changes **rewrites** the `Activities` and `Settings` tabs completely. Any extra columns or notes you add there will be removed.
-
-## Setup: Standalone / GitHub Pages version
-
-`index.html` works on its own with no build step:
-
-- **Locally**: open `index.html` in a browser.
-- **GitHub Pages**: in the repo go to **Settings → Pages**, set the source to the branch you want and the `/ (root)` folder. The calculator is served at `https://<user>.github.io/pm-effort-forge/`.
-
-In this mode everything stays in the current browser. Use **Export Config (JSON)** or **Download CSV** on the Admin tab to back up or share your activity catalog.
-
-## Project-specific activities
-
-On the **Effort Calculator** tab, turn on **Customize activities for this project** to change activities for the current project only:
-
-- Edit any activity's hours, unit, or times/yr. Changed activities are marked **Adjusted** and can be reset to the catalog values.
-- **Set all selected to … hrs per …** applies one value to every selected activity (for example, 1 hr/week).
-- **+ Add activity to this project** adds an activity that exists only in this project (marked **Added**).
-
-These changes are saved with the project (in the `Customizations` column, or browser storage in standalone mode) and never change the shared `Activities` tab. Activities you didn't change keep following the catalog, so later admin edits still apply to them.
-
-### Saving and project names
-
-Project names are unique. Saving a project you loaded from **Saved Projects** updates it in place, including when you rename it. Saving a new project, or renaming one, with a name another saved project already uses is blocked with a message asking for a different name. **Reset Calculator** starts a new project.
-
-## How the calculation works
-
-**Annual hours per activity**, based on its `unit`:
-
-| Unit | Annual hours |
-|------|--------------|
-| `week` | hours × `pmWeeksPerYear` |
-| `month` | hours × 12 |
-| `year` | hours |
-| `each` | hours × `timesPerYear` |
-
-**Base hours** are the annual hours of all selected activities added together.
-
-**Complexity multiplier**:
-
-```
-multiplier = min(multiplierCap,
-                 1 + subawards × subawardRate + (budget / 100,000) × budgetRatePer100k)
-```
-
-**Outputs**:
-
-```
-Total hours/yr = base hours × multiplier
-FTE %          = total hours / fullTimeHours × 100
-Student hrs/wk = total hours / studentWeeksPerYear
-```
-
-### Settings
-
-| Key | Default | Meaning |
-|-----|---------|---------|
-| `pmWeeksPerYear` | 52 | Weeks per year used for weekly activities |
-| `studentWeeksPerYear` | 48 | Weeks per year a student worker is active |
-| `fullTimeHours` | 2080 | Hours in one full-time year (100% FTE) |
-| `subawardRate` | 0.05 | Multiplier added per subaward |
-| `budgetRatePer100k` | 0.03 | Multiplier added per $100k of annual budget |
-| `multiplierCap` | 2 | Maximum complexity multiplier |
-
-The multiplier rates and the cap are placeholders. Adjust them on the **Admin & Settings** tab to fit your institution.
-
-## Admin input: Google Sheet or CSV
-
-Click **Input** in the header to choose where the activity catalog and settings come from:
-
-- **Connected Google Sheet**: the `Activities` and `Settings` tabs (only when opened from Google Sheets / Apps Script).
-- **Uploaded CSV**: stored in this browser only (localStorage). Use **Download CSV** to get the current config as a starting template.
-
-Saved projects still log to the Sheet's `Projects` tab when a Sheet is connected.
-
-### CSV format
-
-One file holds both activities and settings, distinguished by `type`:
-
-```csv
-type,id,name,description,hours,unit,timesPerYear,value
-activity,reporting,Annual reporting & compliance,Coordinates sponsor reporting...,20,year,,
-activity,quarterly_report,Quarterly progress report,Drafts quarterly reports...,6,each,4,
-setting,fullTimeHours,,,,,,2080
-```
-
-- `unit` is `week`, `month`, `year`, or `each` (`each` requires `timesPerYear`).
-- Setting rows use `id` for the setting key and `value` for the number. Settings left out of the file keep their current values.
-- If there is no `type` column, every row is treated as an activity.
-- Activity `id`s must be unique.
-
-## Customizing for your institution
-
-Fork the repo, then:
-
-1. Edit `DEFAULT_CONFIG` in `index.html` to set your default activities and settings, or load your own catalog with a CSV or JSON file.
-2. Replace the logo `<img>` in the header and the color variables in `:root` (`--primary-red`, `--dark-red`) with your own branding.
-3. Follow the setup steps above for Google Sheets and/or GitHub Pages.
+The `Customizations` column stores a project's activity adjustments in a format the calculator reads back when you load the project. Don't edit it by hand. If your `Projects` tab was created before this column existed, it's added automatically the next time a project is saved.

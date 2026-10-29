@@ -456,7 +456,7 @@
 
   .pr-kpis {
     display: grid;
-    grid-template-columns: 1.3fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin: 18px 0;
   }
@@ -942,21 +942,23 @@ const DEFAULT_CONFIG = {
     fullTimeHours: 2080,
     subawardRate: 0.05,
     budgetRatePer100k: 0.03,
-    multiplierCap: 2
+    multiplierCap: 2,
+    annualSalaryMin: 58000,
+    annualSalaryMax: 64000
   },
   activities: [
-    { id: 'monitoring', name: 'Monitoring project activities & workflow', description: 'Tracks project workflows, maintains work plans/deliverable logs, follows up on assigned tasks, and ensures activities stay on schedule.', hours: 2.5, unit: 'week', timesPerYear: '' },
-    { id: 'meeting_coord', name: 'Meeting coordination & facilitation', description: 'Schedules and facilitates project meetings, prepares agendas, gathers status updates, and tracks action items.', hours: 2.5, unit: 'week', timesPerYear: '' },
-    { id: 'communication', name: 'Communication & stakeholder engagement', description: 'Manages internal and external communications, distributes meeting documentation, and provides routine status summaries.', hours: 2, unit: 'week', timesPerYear: '' },
-    { id: 'budget_monitoring', name: 'Budget monitoring & oversight', description: 'Provides financial oversight by tracking expenditures, reconciling budgets, coordinating with SPARC/sponsors, and supporting hiring/purchases.', hours: 5.5, unit: 'month', timesPerYear: '' },
-    { id: 'reporting', name: 'Annual reporting & compliance', description: 'Coordinates sponsor reporting by collecting data, compiling report sections, and ensuring on-time deliverable submissions.', hours: 20, unit: 'year', timesPerYear: '' },
-    { id: 'quarterly_report', name: 'Quarterly progress report', description: 'Drafts and submits quarterly progress reports, tracking sub-deliverables and sponsor-required milestones.', hours: 6, unit: 'each', timesPerYear: 4 },
-    { id: 'doc_management', name: 'Documentation & knowledge management', description: 'Maintains organized shared repositories and manages file version control for project templates and records.', hours: 1, unit: 'week', timesPerYear: '' },
-    { id: 'risk_mgmt', name: 'Risk management & issue resolution', description: 'Supports proactive risk management by identifying potential roadblocks, maintaining a risk log, and resolving emerging issues.', hours: 2.5, unit: 'month', timesPerYear: '' },
-    { id: 'subaward_coord', name: 'Partner/subaward coordination', description: 'Manages external subcontracts, coordinates partner institution communication, and tracks subrecipient progress and reports.', hours: 3, unit: 'month', timesPerYear: '' },
-    { id: 'launch', name: 'Project launch', description: 'Establishes startup tracking tools, prepares kickoff meetings, and coordinates setup with SPARC Post Award.', hours: 8, unit: 'year', timesPerYear: '' },
-    { id: 'closeout', name: 'Project closeout', description: 'Oversees project closeout, ensuring final deliverables are submitted, records archived, and closeout memos completed.', hours: 6, unit: 'year', timesPerYear: '' },
-    { id: 'evaluation', name: 'Evaluation & continuous improvement', description: 'Coordinates feedback collection, assists external evaluator requests, and refines operational workflows.', hours: 2.5, unit: 'month', timesPerYear: '' }
+    { id: 'launch', name: 'Project launch', description: 'Establishes startup tracking tools, prepares kickoff meetings, and coordinates setup with SPARC Post Award.', hours: 8, unit: 'year', timesPerYear: '', isDefault: true },
+    { id: 'closeout', name: 'Project closeout', description: 'Oversees project closeout, ensuring final deliverables are submitted, records archived, and closeout memos completed.', hours: 6, unit: 'year', timesPerYear: '', isDefault: true },
+    { id: 'budget_monitoring', name: 'Budget monitoring & oversight', description: 'Provides financial oversight by tracking expenditures, reconciling budgets, coordinating with SPARC/sponsors, and supporting hiring/purchases.', hours: 5.5, unit: 'month', timesPerYear: '', isDefault: true },
+    { id: 'monitoring', name: 'Monitoring project activities & workflow', description: 'Tracks project workflows, maintains work plans/deliverable logs, follows up on assigned tasks, and ensures activities stay on schedule.', hours: 2.5, unit: 'week', timesPerYear: '', isDefault: false },
+    { id: 'meeting_coord', name: 'Meeting coordination & facilitation', description: 'Schedules and facilitates project meetings, prepares agendas, gathers status updates, and tracks action items.', hours: 2.5, unit: 'week', timesPerYear: '', isDefault: false },
+    { id: 'communication', name: 'Communication & stakeholder engagement', description: 'Manages internal and external communications, distributes meeting documentation, and provides routine status summaries.', hours: 2, unit: 'week', timesPerYear: '', isDefault: false },
+    { id: 'reporting', name: 'Annual reporting & compliance', description: 'Coordinates sponsor reporting by collecting data, compiling report sections, and ensuring on-time deliverable submissions.', hours: 20, unit: 'year', timesPerYear: '', isDefault: false },
+    { id: 'quarterly_report', name: 'Quarterly progress report', description: 'Drafts and submits quarterly progress reports, tracking sub-deliverables and sponsor-required milestones.', hours: 6, unit: 'each', timesPerYear: 4, isDefault: false },
+    { id: 'doc_management', name: 'Documentation & knowledge management', description: 'Maintains organized shared repositories and manages file version control for project templates and records.', hours: 1, unit: 'week', timesPerYear: '', isDefault: false },
+    { id: 'risk_mgmt', name: 'Risk management & issue resolution', description: 'Supports proactive risk management by identifying potential roadblocks, maintaining a risk log, and resolving emerging issues.', hours: 2.5, unit: 'month', timesPerYear: '', isDefault: false },
+    { id: 'subaward_coord', name: 'Partner/subaward coordination', description: 'Manages external subcontracts, coordinates partner institution communication, and tracks subrecipient progress and reports.', hours: 3, unit: 'month', timesPerYear: '', isDefault: false },
+    { id: 'evaluation', name: 'Evaluation & continuous improvement', description: 'Coordinates feedback collection, assists external evaluator requests, and refines operational workflows.', hours: 2.5, unit: 'month', timesPerYear: '', isDefault: false }
   ]
 };
 
@@ -971,12 +973,18 @@ function annualHours(a, s) {
   return h;
 }
 
-// The catalog with this project's overrides applied, followed by its project-only activities.
+// The catalog with this project's overrides applied (default activities first), followed by its project-only activities.
 function effectiveActivities(cfg, project) {
   const overrides = project.activityOverrides || {};
   return cfg.activities
     .map(a => overrides[a.id] ? { ...a, ...overrides[a.id], customized: true } : a)
+    .sort((a, b) => Number(!!b.isDefault) - Number(!!a.isDefault))
     .concat((project.customActivities || []).map(a => ({ ...a, custom: true })));
+}
+
+// Activities checked on a fresh calculator.
+function defaultSelection(cfg) {
+  return cfg.activities.filter(a => a.isDefault).map(a => a.id);
 }
 
 function calculate(cfg, project) {
@@ -995,11 +1003,15 @@ function calculate(cfg, project) {
   const fteHours = Number(s.fullTimeHours) || 2080;
   const studentWeeks = Number(s.studentWeeksPerYear) || 48;
 
+  const fte = fteHours > 0 ? totalHours / fteHours : 0;
+
   return {
     baseHours,
     multiplier,
     totalHours,
-    ftePercent: fteHours > 0 ? (totalHours / fteHours) * 100 : 0,
+    ftePercent: fte * 100,
+    costMin: fte * (Number(s.annualSalaryMin) || 0),
+    costMax: fte * (Number(s.annualSalaryMax) || 0),
     studentHoursPerWeek: studentWeeks > 0 ? totalHours / studentWeeks : 0,
     chosenActivities: chosen
   };
@@ -1199,6 +1211,9 @@ function normalize(c) {
         if (!a.description) a.description = def.description;
         if (a.hours === undefined || a.hours === null) a.hours = def.hours;
       }
+      // Catalogs saved before the Default column existed fall back to the built-in defaults.
+      if (a.isDefault === undefined || a.isDefault === '') a.isDefault = !!(def && def.isDefault);
+      else a.isDefault = a.isDefault === true || /^(true|yes|y|1|x)$/i.test(String(a.isDefault).trim());
     });
   } else {
     c.activities = copy(DEFAULT_CONFIG.activities);
@@ -1221,7 +1236,7 @@ async function loadConfig() {
       await store.saveConfig(c);
     }
     config = normalize(c);
-    selected = config.activities.map(a => a.id);
+    selected = defaultSelection(config);
     setStatus(sourceStatus());
     renderAll();
     if (wasClean) markClean();
@@ -1433,13 +1448,22 @@ function renderResults() {
       </td>
       <td><b>${r.studentHoursPerWeek.toFixed(1)}</b></td>
     </tr>
+    <tr>
+      <td>
+        <b>Projected cost</b>
+        <button type="button" class="tooltip-icon" data-tooltip="FTE % applied to a full-time salary range of ${fmtMoney(config.settings.annualSalaryMin)} to ${fmtMoney(config.settings.annualSalaryMax)} per year" aria-label="Projected cost info">ⓘ</button>
+        <span style="color:#666; font-size:0.85em; font-weight:normal;">(per year)</span>
+      </td>
+      <td><b>${fmtMoney(r.costMin)} – ${fmtMoney(r.costMax)}</b></td>
+    </tr>
   </table></div>`;
 }
 
 function renderAdmin() {
   document.getElementById('adminActivities').innerHTML =
-    '<div class="table-wrapper"><table><tr><th scope="col" style="width: 25%;">Activity Name</th><th scope="col" style="width: 45%;">Description</th><th scope="col" style="width: 10%;">Hours</th><th scope="col" style="width: 10%;">Per</th><th scope="col" style="width: 10%;">Times/yr</th><th scope="col"></th></tr>' +
+    '<div class="table-wrapper"><table><tr><th scope="col" style="width: 60px; text-align: center;">Default</th><th scope="col" style="width: 25%;">Activity Name</th><th scope="col" style="width: 45%;">Description</th><th scope="col" style="width: 10%;">Hours</th><th scope="col" style="width: 10%;">Per</th><th scope="col" style="width: 10%;">Times/yr</th><th scope="col"></th></tr>' +
     config.activities.map((a, i) => `<tr>
+      <td style="text-align: center;"><input type="checkbox" aria-label="Check ${esc(a.name)} by default" ${a.isDefault ? 'checked' : ''} onchange="editActivity(${i}, 'isDefault', this.checked)"></td>
       <td><input type="text" aria-label="Activity Name" value="${esc(a.name)}" onchange="editActivity(${i}, 'name', this.value)"></td>
       <td><input type="text" aria-label="Activity Description" value="${esc(a.description || '')}" onchange="editActivity(${i}, 'description', this.value)" placeholder="Activity description"></td>
       <td><input type="number" aria-label="Activity Hours" step="0.5" value="${esc(a.hours)}" onchange="editActivity(${i}, 'hours', Number(this.value))"></td>
@@ -1587,7 +1611,7 @@ function resetProjectForm() {
   customActivities = [];
   customizeMode = false;
   loadedProjectName = null;
-  selected = config.activities.map(a => a.id);
+  selected = defaultSelection(config);
   renderUser();
   renderResults();
   markClean();
@@ -1668,7 +1692,7 @@ function editActivity(i, field, value) {
 function addActivity() {
   const wasClean = !isDirty();
   const id = 'a' + Date.now();
-  config.activities.push({ id, name: 'New activity', description: '', hours: 1, unit: 'week', timesPerYear: '' });
+  config.activities.push({ id, name: 'New activity', description: '', hours: 1, unit: 'week', timesPerYear: '', isDefault: false });
   selected.push(id);
   renderAll();
   if (wasClean) markClean();
@@ -1709,7 +1733,7 @@ async function resetDefaults() {
   if (!confirm('Replace all activities and settings with default values?')) return;
   const wasClean = !isDirty();
   config = normalize(copy(DEFAULT_CONFIG));
-  selected = config.activities.map(a => a.id);
+  selected = defaultSelection(config);
   renderAll();
   if (wasClean) markClean();
   await saveAdmin();
@@ -1732,7 +1756,7 @@ function importConfig(input) {
       if (!Array.isArray(c.activities) || !c.settings) throw new Error('Missing activities or settings structure');
       const wasClean = !isDirty();
       config = normalize(c);
-      selected = config.activities.map(a => a.id);
+      selected = defaultSelection(config);
       renderAll();
       if (wasClean) markClean();
       await saveAdmin();
@@ -1743,7 +1767,7 @@ function importConfig(input) {
 }
 
 // ---------- Input Source & CSV ----------
-const CSV_HEADERS = ['type', 'id', 'name', 'description', 'hours', 'unit', 'timesPerYear', 'value'];
+const CSV_HEADERS = ['type', 'id', 'name', 'description', 'hours', 'unit', 'timesPerYear', 'default', 'value'];
 
 function renderSourcePanel() {
   document.querySelectorAll('input[name=source]').forEach(r => {
@@ -1802,8 +1826,8 @@ function toCsv(rows) {  return rows.map(r => r.map(v => {
 
 function configToCsv(c) {
   return toCsv([CSV_HEADERS]
-    .concat(c.activities.map(a => ['activity', a.id, a.name, a.description, a.hours, a.unit, a.timesPerYear, '']))
-    .concat(Object.keys(c.settings).map(k => ['setting', k, '', '', '', '', '', c.settings[k]])));
+    .concat(c.activities.map(a => ['activity', a.id, a.name, a.description, a.hours, a.unit, a.timesPerYear, a.isDefault ? 'yes' : 'no', '']))
+    .concat(Object.keys(c.settings).map(k => ['setting', k, '', '', '', '', '', '', c.settings[k]])));
 }
 
 function csvToConfig(text) {
@@ -1841,7 +1865,8 @@ function csvToConfig(text) {
         description: get(r, 'description'),
         hours: Number(get(r, 'hours')),
         unit,
-        timesPerYear: isNum(times) ? Number(times) : ''
+        timesPerYear: isNum(times) ? Number(times) : '',
+        isDefault: head.includes('default') ? get(r, 'default') || 'no' : undefined
       });
     } else {
       throw new Error(line + `type must be "activity" or "setting", not "${type}".`);
@@ -1865,7 +1890,7 @@ function uploadCsv(input) {
       await store.saveConfig(c);
       const wasClean = !isDirty();
       config = c;
-      selected = config.activities.map(a => a.id);
+      selected = defaultSelection(config);
       renderAll();
       if (wasClean) markClean();
       renderSourcePanel();
@@ -1887,6 +1912,8 @@ function downloadCsv() {
 function fmtNum(n, digits = 1) {
   return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
+
+function fmtMoney(n) { return '$' + fmtNum(n, 0); }
 
 function cadenceLabel(a, s) {
   const h = Number(a.hours) || 0;
@@ -1936,6 +1963,11 @@ function renderPrintReport() {
         <div class="pr-kpi-sub">hours per year, after complexity adjustment</div>
       </div>
       <div class="pr-kpi">
+        <div class="pr-kpi-label">Projected cost</div>
+        <div class="pr-kpi-value">${fmtMoney(r.costMin)} – ${fmtMoney(r.costMax)}</div>
+        <div class="pr-kpi-sub">per year, at ${fmtMoney(s.annualSalaryMin)}–${fmtMoney(s.annualSalaryMax)} full-time salary</div>
+      </div>
+      <div class="pr-kpi">
         <div class="pr-kpi-label">FTE</div>
         <div class="pr-kpi-value">${fmtNum(r.ftePercent)}%</div>
         <div class="pr-kpi-sub">of a ${fmtNum(s.fullTimeHours, 0)}-hour work year</div>
@@ -1977,6 +2009,7 @@ function renderPrintReport() {
         <li><b>Base hours</b> add up each selected activity's annual hours (weekly × ${fmtNum(s.pmWeeksPerYear, 0)} weeks, monthly × 12).</li>
         <li><b>Total hours</b> = base hours × complexity multiplier (maximum ${s.multiplierCap}×).</li>
         <li><b>FTE %</b> = total hours ÷ ${fmtNum(s.fullTimeHours, 0)}. <b>Student hours/week</b> = total hours ÷ ${fmtNum(s.studentWeeksPerYear, 0)} weeks.</li>
+        <li><b>Projected cost</b> = FTE × a full-time salary of ${fmtMoney(s.annualSalaryMin)} to ${fmtMoney(s.annualSalaryMax)} per year.</li>
       </ul>
     </div>`;
 }

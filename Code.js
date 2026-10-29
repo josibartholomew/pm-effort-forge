@@ -3,7 +3,7 @@
 // Hardcoded Admin Password (change 'admin123' to your preferred password)
 const ADMIN_PASSWORD = 'admin123';
 
-const ACTIVITY_HEADERS = ['id', 'name', 'description', 'hours', 'unit', 'timesPerYear'];
+const ACTIVITY_HEADERS = ['id', 'name', 'description', 'hours', 'unit', 'timesPerYear', 'default'];
 const PROJECT_HEADERS = [
   'Saved', 'Project', 'Budget', 'Subawards', 'Activities',
   'Base hrs/yr', 'Multiplier', 'Total hrs/yr', 'FTE %', 'Student hrs/wk', 'Customizations'
@@ -62,7 +62,10 @@ function getConfig() {
   const setSheet = ss.getSheetByName('Settings');
   if (!actSheet || !setSheet) return null;
 
-  const activities = actSheet.getDataRange().getValues().slice(1)
+  const actData = actSheet.getDataRange().getValues();
+  // Sheets created before the default column existed leave isDefault unset so the calculator uses its built-in defaults.
+  const defaultCol = actData[0].map(h => String(h).trim().toLowerCase()).indexOf('default');
+  const activities = actData.slice(1)
     .filter(r => r[1] !== '')
     .map((r, i) => ({
       id: String(r[0] || 'row' + (i + 2)),
@@ -70,7 +73,8 @@ function getConfig() {
       description: String(r[2] || ''),
       hours: parseNum_(r[3]),
       unit: String(r[4] || 'year').toLowerCase(),
-      timesPerYear: (r[5] !== '' && r[5] !== undefined) ? parseNum_(r[5]) : ''
+      timesPerYear: (r[5] !== '' && r[5] !== undefined) ? parseNum_(r[5]) : '',
+      isDefault: defaultCol < 0 ? undefined : r[defaultCol] === true || /^(true|yes|y|1|x)$/i.test(String(r[defaultCol]).trim())
     }));
 
   const settings = {};
@@ -86,7 +90,7 @@ function saveConfig(config) {
 
   let actSheet = ss.getSheetByName('Activities') || ss.insertSheet('Activities');
   actSheet.clearContents();
-  const actRows = [ACTIVITY_HEADERS].concat(config.activities.map(a => ACTIVITY_HEADERS.map(h => a[h] ?? '')));
+  const actRows = [ACTIVITY_HEADERS].concat(config.activities.map(a => ACTIVITY_HEADERS.map(h => h === 'default' ? !!a.isDefault : a[h] ?? '')));
   actSheet.getRange(1, 1, actRows.length, ACTIVITY_HEADERS.length).setValues(actRows);
   actSheet.setFrozenRows(1);
   actSheet.getRange(1, 1, 1, ACTIVITY_HEADERS.length).setFontWeight('bold').setBackground('#000000').setFontColor('#FFFFFF');

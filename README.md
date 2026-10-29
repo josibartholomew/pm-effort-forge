@@ -13,6 +13,7 @@ It then estimates:
 - **Total hours per year** spent on project management
 - **FTE %**: how much of one full-time position that is (100% = one person working full time)
 - **Student hours per week**: how many hours a week a student worker would need to cover the work
+- **Projected cost**: a yearly cost range for that share of a full-time position
 
 ---
 
@@ -49,7 +50,7 @@ The calculator can run in two ways. It works out which one it's in automatically
 The **Effort Calculator** tab is where you build an estimate.
 
 1. **Enter the project details**: project name, annual budget, and number of subawards.
-2. **Check the activities the project needs.** Use **Select All** or **Select None** to speed this up.
+2. **Check the activities the project needs.** Default activities (Project launch, Project closeout, and Budget monitoring to start) are listed first and already checked. Use **Select All** or **Select None** to speed this up.
 3. **Read the results.** The totals update as you go. Hover over the ⓘ icons for an explanation of each number.
 4. Click **Save Project** to keep it, or **🖨️ Print / Export PDF Summary** to print it or save it as a PDF.
 
@@ -93,7 +94,7 @@ The **Admin & Settings** tab controls the shared list of activities and the numb
 
 From this tab you can:
 
-- **Edit the activity list**: names, descriptions, hours, and how often each happens. **+ Add Activity** adds a new one, and **Delete** removes one.
+- **Edit the activity list**: names, descriptions, hours, and how often each happens. Check **Default** to list an activity first and check it automatically on a new calculator. **+ Add Activity** adds a new one, and **Delete** removes one.
 - **Change the settings** described in [How the estimate is calculated](#settings-you-can-change).
 - **Save Admin Changes** to apply your edits for everyone.
 - **Reset to Defaults** to go back to the original activity list and settings.
@@ -134,6 +135,7 @@ Bigger projects and more partners mean more coordination, so the base hours are 
 - **Total hours per year** = base hours × multiplier
 - **FTE %** = total hours ÷ 2,080 (one full-time year) × 100
 - **Student hours per week** = total hours ÷ 48 (weeks a student works per year)
+- **Projected cost** = FTE × $58,000 to FTE × $64,000 (the full-time salary range)
 
 ### Example
 
@@ -143,6 +145,7 @@ A project with a **$500,000** budget, **2 subawards**, and **300 base hours**:
 - Total hours = 300 × 1.25 = **375 hours per year**
 - FTE = 375 ÷ 2,080 = **18.0%**
 - Student hours = 375 ÷ 48 = **7.8 hours per week**
+- Projected cost = 18.0% × $58,000 to 18.0% × $64,000 = **$10,457 to $11,538 per year**
 
 ### Settings you can change
 
@@ -156,6 +159,8 @@ All of these can be changed on the Admin & Settings tab. The multiplier numbers 
 | `subawardRate` | 0.05 | Amount added to the multiplier for each subaward |
 | `budgetRatePer100k` | 0.03 | Amount added to the multiplier for each $100,000 of budget |
 | `multiplierCap` | 2 | The highest the multiplier can go |
+| `annualSalaryMin` | 58000 | Low end of the full-time yearly salary used for projected cost |
+| `annualSalaryMax` | 64000 | High end of the full-time yearly salary used for projected cost |
 
 ---
 
@@ -257,17 +262,18 @@ Even when you use a CSV, saved projects still go to the Sheet's `Projects` tab i
 
 Each row is either an **activity** or a **setting**:
 
-| type | id | name | description | hours | unit | timesPerYear | value |
-|---|---|---|---|---|---|---|---|
-| activity | reporting | Annual reporting & compliance | Coordinates sponsor reporting... | 20 | year | | |
-| activity | quarterly_report | Quarterly progress report | Drafts quarterly reports... | 6 | each | 4 | |
-| setting | fullTimeHours | | | | | | 2080 |
+| type | id | name | description | hours | unit | timesPerYear | default | value |
+|---|---|---|---|---|---|---|---|---|
+| activity | launch | Project launch | Establishes startup tracking tools... | 8 | year | | yes | |
+| activity | quarterly_report | Quarterly progress report | Drafts quarterly reports... | 6 | each | 4 | no | |
+| setting | fullTimeHours | | | | | | | 2080 |
 
 Rules:
 
 - **unit** must be `week`, `month`, `year`, or `each`. If it's `each`, fill in **timesPerYear**.
 - **id** is a short code for each activity. Each activity needs a different one.
-- For setting rows, put the setting's name in **id** and its number in **value**. The setting name must be one of the six in the [settings table](#settings-you-can-change). Settings you leave out keep their current values.
+- **default** is `yes` for activities that should be listed first and checked automatically. Leave it blank or `no` otherwise.
+- For setting rows, put the setting's name in **id** and its number in **value**. The setting name must be one of the ones in the [settings table](#settings-you-can-change). Settings you leave out keep their current values.
 - If the file has no **type** column, every row is treated as an activity.
 
 If something in the file isn't right, the calculator tells you which row has the problem.
